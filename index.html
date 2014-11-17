@@ -136,7 +136,7 @@
             string = string + "]";
             var json_array = jQuery.parseJSON(string);
 			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[randNumber].startAt+", opacity:1, endAt:"+json_array[randNumber].endAt+");
+			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[randNumber].startAt+", opacity:1, endAt:"+json_array[randNumber].endAt+"}");
             localStorage.setItem("clips", JSON.stringify(json_array));
         }
     }
