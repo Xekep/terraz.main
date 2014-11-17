@@ -98,7 +98,7 @@
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    var clips = ["http://youtu.be/-dsK4HpQeCU"];
+    var clips = [["http://youtu.be/-dsK4HpQeCU", 7, 210]];
     var randNumber = getRandomInt(0, (clips.length - 1));
 
    if (typeof(Storage) !== "undefined") {
@@ -111,32 +111,32 @@
 			{
 				var string = "[";
 				for (i = 0; i < clips.length; i++) {
-					string += "{\"id\":" + i + ", \"url\": \"" + clips[i] + "\", \"views\": 0},";
+					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": clips[i][1], \"stoptAt\": clips[i][2]},";
 				}
 				string = string.substr(0, (string.length - 1));
 				string = string + "]";
 				var json_array = jQuery.parseJSON(string);
 				json_array[randNumber].views++;
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
+				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[(json_array.length - 1)].startAt+", opacity:1, endAt:"+json_array[(json_array.length - 1)].endAt+"}");
 				localStorage.setItem("clips", JSON.stringify(json_array));
 			} else
 			{
 				console.log(json_array);
 				json_array[(json_array.length - 1)].views++;
 				console.log(json_array);
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
+				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[(json_array.length - 1)].startAt+", opacity:1, endAt:"+json_array[(json_array.length - 1)].endAt+"}");
 				localStorage.setItem("clips", JSON.stringify(json_array));
 			}
         } else {
             var string = "[";
             for (i = 0; i < clips.length; i++) {
-                string += "{\"id\":" + i + ", \"url\": \"" + clips[i] + "\", \"views\": 0},";
+                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": clips[i][1], \"stoptAt\": clips[i][2]},";
             }
             string = string.substr(0, (string.length - 1));
             string = string + "]";
             var json_array = jQuery.parseJSON(string);
 			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
+			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[randNumber].startAt+", opacity:1, endAt:"+json_array[randNumber].endAt+");
             localStorage.setItem("clips", JSON.stringify(json_array));
         }
     }
