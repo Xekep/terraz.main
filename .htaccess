@@ -1,7 +1,0 @@
----
-layout: none
-permalink: .htaccess
----
-RewriteEngine On
-RewriteCond %{http_host} ^terraz\.ru [nc]
-RewriteRule ^(.*)$ http://test.terraz.ru/$1 [r=301,nc]
