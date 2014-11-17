@@ -98,7 +98,7 @@
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    var clips = ["http://youtu.be/-dsK4HpQeCU?t=13s"];
+    var clips = ["http://youtu.be/-dsK4HpQeCU"];
     var randNumber = getRandomInt(0, (clips.length - 1));
 
    if (typeof(Storage) !== "undefined") {
@@ -136,7 +136,7 @@
             string = string + "]";
             var json_array = jQuery.parseJSON(string);
 			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:6, opacity:1}");
+			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
             localStorage.setItem("clips", JSON.stringify(json_array));
         }
     }
