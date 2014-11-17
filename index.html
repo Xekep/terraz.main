@@ -136,7 +136,7 @@
             string = string + "]";
             var json_array = jQuery.parseJSON(string);
 			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
+			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:8, opacity:1}");
             localStorage.setItem("clips", JSON.stringify(json_array));
         }
     }
