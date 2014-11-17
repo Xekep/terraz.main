@@ -4,12 +4,5 @@ DirectoryIndex index.html
 
 RewriteEngine On
 
-# BEGIN Redirect
-RewriteCond %{HTTP_HOST} .
-RewriteCond %{HTTP_HOST} ^terraz\.ru$ [NC]
-RewriteRule (.*) http://test.terraz.ru/$1 [R=301,L]
-
-RewriteCond %{HTTP_HOST} .
-RewriteCond %{HTTP_HOST} ^www\.terraz\.ru$ [NC]
-RewriteRule (.*) http://test.terraz.ru/$1 [R=301,L]
-# END Redirect	
+RewriteCond %{http_host} ^terraz.ru [nc]
+RewriteRule ^(.*)$ http://test.terraz.ru/$1 [r=301,nc]
