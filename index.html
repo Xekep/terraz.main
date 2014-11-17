@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 
   <head>
@@ -98,7 +98,7 @@
         return Math.floor(Math.random() * (max - min + 1)) + min;
     }
 
-    var clips = [["http://youtu.be/-dsK4HpQeCU", 7, 210]];
+    var clips = [["http://youtu.be/-dsK4HpQeCU", 11, 0]];
     var randNumber = getRandomInt(0, (clips.length - 1));
 
    if (typeof(Storage) !== "undefined") {
@@ -111,7 +111,7 @@
 			{
 				var string = "[";
 				for (i = 0; i < clips.length; i++) {
-					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\":" + clips[i][1] + ", \"stoptAt\":" + clips[i][2] + "},";
+					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": "+clips[i][1]+", \"stoptAt\": "+clips[i][2]+"},";
 				}
 				string = string.substr(0, (string.length - 1));
 				string = string + "]";
@@ -124,13 +124,13 @@
 				console.log(json_array);
 				json_array[(json_array.length - 1)].views++;
 				console.log(json_array);
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[(json_array.length - 1)].startAt+", opacity:1, endAt:"+json_array[(json_array.length - 1)].endAt+"}");
+				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+clips[(json_array.length - 1)][1]+", opacity:1, endAt:"+clips[(json_array.length - 1)][2]+"}");
 				localStorage.setItem("clips", JSON.stringify(json_array));
 			}
         } else {
             var string = "[";
             for (i = 0; i < clips.length; i++) {
-                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\":" + clips[i][1] + ", \"stoptAt\":" + clips[i][2] + "},";
+                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": "+clips[i][1]+", \"stoptAt\": "+clips[i][2]+"},";
             }
             string = string.substr(0, (string.length - 1));
             string = string + "]";
