@@ -117,14 +117,14 @@
 				string = string + "]";
 				var json_array = jQuery.parseJSON(string);
 				json_array[randNumber].views++;
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:6, opacity:1}");
+				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
 				localStorage.setItem("clips", JSON.stringify(json_array));
 			} else
 			{
 				console.log(json_array);
 				json_array[(json_array.length - 1)].views++;
 				console.log(json_array);
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:6, opacity:1}");
+				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
 				localStorage.setItem("clips", JSON.stringify(json_array));
 			}
         } else {
@@ -136,7 +136,7 @@
             string = string + "]";
             var json_array = jQuery.parseJSON(string);
 			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:9, opacity:1}");
+			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:7, opacity:1}");
             localStorage.setItem("clips", JSON.stringify(json_array));
         }
     }
