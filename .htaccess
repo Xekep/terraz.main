@@ -3,4 +3,13 @@
 DirectoryIndex index.html
 
 RewriteEngine On
-RewriteBase /
+
+# BEGIN Redirect
+RewriteCond %{HTTP_HOST} .
+RewriteCond %{HTTP_HOST} ^terraz\.ru$ [NC]
+RewriteRule (.*) http://terraz.ru/$1 [R=301,L]
+
+RewriteCond %{HTTP_HOST} .
+RewriteCond %{HTTP_HOST} ^www\.terraz\.ru$ [NC]
+RewriteRule (.*) http://www.terraz.ru/$1 [R=301,L]
+# END Redirect	
