@@ -111,7 +111,7 @@
 			{
 				var string = "[";
 				for (i = 0; i < clips.length; i++) {
-					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": clips[i][1], \"stoptAt\": clips[i][2]},";
+					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\":" + clips[i][1] + ", \"stoptAt\":" + clips[i][2] + "},";
 				}
 				string = string.substr(0, (string.length - 1));
 				string = string + "]";
@@ -130,7 +130,7 @@
         } else {
             var string = "[";
             for (i = 0; i < clips.length; i++) {
-                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": clips[i][1], \"stoptAt\": clips[i][2]},";
+                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\":" + clips[i][1] + ", \"stoptAt\":" + clips[i][2] + "},";
             }
             string = string.substr(0, (string.length - 1));
             string = string + "]";
