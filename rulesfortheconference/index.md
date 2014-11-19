@@ -1,7 +1,4 @@
----
----
-
-\<doctype html\>
+<!DOCTYPE html>
  <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -11,3 +8,5 @@
     <link rel="canonical" href="http://fun.terraz.ru/rulesfortheconference" />
   </head>
  </html>
+---
+---
