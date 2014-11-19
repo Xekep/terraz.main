@@ -8,5 +8,3 @@
     <link rel="canonical" href="http://fun.terraz.ru/rulesfortheconference" />
   </head>
  </html>
----
----
