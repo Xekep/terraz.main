@@ -1,7 +1,6 @@
 ---
 ---
-<!DOCTYPE html>
-<html lang="en">
+ <html lang="en">
   <head>
     <meta charset="utf-8">
     <title>TerraZ</title>
@@ -9,4 +8,4 @@
 
     <link rel="canonical" href="http://fun.terraz.ru/rulesfortheconference" />
   </head>
-</html>
+ </html>
