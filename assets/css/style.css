@@ -43,6 +43,10 @@ body
     background: #222;
 
     -webkit-font-smoothing: antialiased;
+	
+    -moz-user-select: none;
+    -khtml-user-select: none;
+    user-select: none;
 }
 
 h1,
