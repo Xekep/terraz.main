@@ -46,6 +46,7 @@ $(window).load(function() {
 								  $('#canvas-container').css('opacity','1');  
 								  $('.arrow-wrap').css('opacity','1');
 								  $('#home-screen .content-block p').css('opacity','1');
+								  $('#home-screen .content-block p').css('padding','10px');
 								  $('#home-screen .content-block h1').css('opacity','1');
 								  $('#home-screen .content-block img.logo').css('opacity','1');
 								  
