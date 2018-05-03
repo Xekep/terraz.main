@@ -105,20 +105,20 @@ $(document).ready( function(){
 		
 	    // Button Controll / Transfrom
 		$( ".volume-button" ).click(function() {
-			$('#bgndVideo').toggleVolume();
+			$('#bgndVideo').YTPToggleVolume();
 			if(vol == 0) {
               $( ".volume-button" ).css('display','none')
 			}else {}
 		});
 
 		function sh1 () {
-			$('#bgndVideo').playYTP();
+			$('#bgndVideo').YTPPlay();
 			$( ".stop-button" ).removeClass('fa-play');
 			 $( ".stop-button" ).addClass('fa-pause');
 		}
 		
 		function sh2 () {
-			$('#bgndVideo').pauseYTP();
+			$('#bgndVideo').YTPPause();
 			$( ".stop-button" ).removeClass('fa-pause');
 			$( ".stop-button" ).addClass('fa-play');
 		}
