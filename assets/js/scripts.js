@@ -371,6 +371,8 @@ $(document).ready( function(){
 		speed: 500,
 		slides: '.slide'
 	});
+
+	$('.slider').css('padding-bottom', '10px');
 	
 });
 
