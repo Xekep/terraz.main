@@ -1,154 +1,76 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-
-  <head>
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <meta name="description" content="Лучший русскоязычный сервер Terraria ip s.terraz.ru port 7777">
-          <meta charset="utf-8">
-          
-          <!-- FAVICON -->
-          <link rel="shortcut icon" href="/assets/favicon.ico">
-		  
-          <link href="//terraz.ru/assets/apple-touch-icon.png" rel="apple-touch-icon">
-          <link href="//terraz.ru/assets/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="76x76">
-          <link href="//terraz.ru/assets/apple-touch-icon-120x120.png" rel="apple-touch-icon" sizes="120x120">
-          <link href="//terraz.ru/assets/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="152x152">
-          
-          <!-- PAGE TITLE -->
-          <title>TerraZ</title>
-          
-          <!-- GOOGLE FONTS -->
-          <link href='https://fonts.googleapis.com/css?family=Lato:300,400,700|Raleway:300,400,500|Open+Sans:300,400,600,700,800' rel='stylesheet' type='text/css'>
-          
-          <!-- STYLESHEETS -->
-          <link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
-          <link href="/assets/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
-          <link href="/assets/css/animate.min.css" rel="stylesheet" type="text/css" />
-          <link href="/assets/css/style.css" rel="stylesheet" type="text/css" />
-  </head>
-  <body>
-  
-      <!-- BACKGROUND -->
-      <div id="bg-pattern"></div>
-      <div id="bg-darker"></div>
-      <!-- /BACKGROUND -->
-      
-      <!-- YOUTUBE BACKGROUND -->
-      <a id="bgndVideo" class="player showOn-video-bg" data-property=""></a>
-      <i class="volume-button fa fa-volume-up showOn-video-bg"></i>
-      <i class="stop-button fa fa-pause showOn-video-bg"></i>
-      <!-- /YOUTUBE BACKGROUND -->
-      
-      
-      <!-- PRELOADER -->
-      <div id="prelaoder">
-        <div class="socket">
-          <img alt="" src="/assets/img/spinner.png">
-        </div>
-      </div>
-      <!-- /PRELOADER -->
-        
-        
-      <!-- FRONT CONTENT -->
-      <div id="front-page">
-        
-          <!-- HOME SCREEN -->
-          <div id="home-screen">
-          
-              <div id="canvas-container">
-                  <canvas id="gravity"></canvas> 
-              </div>
-              
-              <!-- CONTENT BLOCK -->
-              <div class="content-block animated">
-              
-                  <div class="container animated">
-                  
-                    <a href="https://fun.terraz.ru"><img class="logo" alt="" src="/assets/img/logo.png"></a>
-                    
-                    <div class="slider">
-                    	  <div class="slide"> <h1>Уже сейчас:<br><a href="https://fun.terraz.ru/">fun.terraz.ru</a></h1><br></div>
-			<div class="slide"><h1>Вы<br>Можете<br><a href="steam://rungameid/105600// -j s.terraz.ru -p 7777">Играть</a></h1></div>
-                       <div class="slide"> <h1>На нашем<br>Сервере</h1></div>
-
-                       <div class="slide"> <h1>Копай <span> & </span> <br>Строй</h1> </div>
-                     
-                       <div class="slide"> <h1>Лучший<br>Русскоязычный сервер</h1></div>
-                     
-                    </div>
-      
-		      <p>
-			<a href="https://vk.com/terraz" style="background-image:url(/assets/img/vk.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
-			<a href="https://www.youtube.com/xekep" style="background-image:url(/assets/img/youtube.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
-			<a href="/conference" style="background-image:url(/assets/img/discord.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
-		      </p>
-                    
+   <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+      <title>TerraZ — Ваш любимый сервер</title>
+	  <meta name="description" content="Лучший русскоязычный сервер Terraria ip s.terraz.ru port 7777">
+      <link rel="shortcut icon" href="assets/favicon.ico">
+      <link href="assets/apple-touch-icon.png" rel="apple-touch-icon">
+      <link href="assets/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="76x76">
+      <link href="assets/apple-touch-icon-120x120.png" rel="apple-touch-icon" sizes="120x120">
+      <link href="assets/apple-touch-icon-76x76.png" rel="apple-touch-icon" sizes="152x152">
+      <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,600|Raleway:300,400" rel="stylesheet">
+      <link href="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet" type="text/css" />
+      <link href="assets/css/themify-icons.min.css" rel="stylesheet" type="text/css" />
+      <link href="assets/css/font-awesome.min.css" rel="stylesheet" type="text/css" />
+      <link href="assets/css/vegas.min.css" rel="stylesheet" type="text/css" />
+      <link href="assets/css/style.css" rel="stylesheet" type="text/css" />
+   </head>
+   <body>
+      <div id="main">
+         <div id="page-loader">
+            <div class="spinner-container">
+               <div class="css-spinner"></div>
+            </div>
+         </div>
+         <section id="hero" class="hero hero-1">
+            <div class="front-content page-enter-animated">
+               <div class="container-mid">
+                  <img class="logo" src="assets/images/logo.png" alt="logo"> 
+                  <div class="cycle-wrapper">
+                     <div id="cycle">
+                        <div class="slide">
+                           <h1>ИГРАЙ<br>УЖЕ СЕЙЧАС<br><a href="https://fun.terraz.ru/">FUN.TERRAZ.RU</a></h1>
+                        </div>
+                        <div class="slide">
+                           <h1><a href="steam://rungameid/105600// -j s.terraz.ru -p 7777">КОПАЙ<span> & </span>СТРОЙ</a><br>НА НАШЕМ<br>СЕРВЕРЕ</h1>
+                        </div>
+                        <div class="slide">
+                           <h1>ЛУЧШИЙ<br>РУССКОЯЗЫЧНЫЙ<br>СЕРВЕР</h1>
+                        </div>
+                     </div>
                   </div>
-                
-              </div>
-              <!-- /CONTENT BLOCK -->
-              
-          </div>
-          <!-- /HOME SCREEN -->
-   
+                  <p>
+                     <a href="https://vk.com/terraz" style="background-image:url(assets/images/vk.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
+                     <a href="https://www.youtube.com/xekep" style="background-image:url(assets/images/youtube.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
+                     <a href="/conference" style="background-image:url(assets/images/discord.png);width:30px;height:30px;display:inline-block;background-size: cover;"></a>
+                  </p>
+               </div>
+            </div>
+            <div class="background-content page-enter-animated">
+               <div class="level-1">
+                  <div class="bg-overlay"></div>
+                  <div class="bg-pattern"></div>
+                  <div id="canvas">
+                     <canvas class="bg-effect layer" data-depth="0.2"></canvas>
+                  </div>
+               </div>
+               <div class="level-2">
+                  <div class="bg-image layer" data-depth="0.04"></div>
+                  <div class="bg-video layer" data-depth="0.04"></div>
+                  <div class="bg-color layer" data-depth="0.04"></div>
+               </div>
+            </div>
+         </section>
       </div>
-      <!-- /FRONT CONTENT -->
-
-      <!-- JAVASCRIPTS -->
-      <script src="//ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
-      <script type="text/javascript" src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.0/js/bootstrap.min.js"></script>
-      <script type="text/javascript" src="/assets/js/jquery.cycle.min.js"></script>
-      <script type="text/javascript" src="/assets/js/jquery.backstretch.min.js"></script>
-      <script type="text/javascript" src="/assets/js/scripts.js"></script>
-	  <script>
-
-   function getRandomInt(min, max) {
-        return Math.floor(Math.random() * (max - min + 1)) + min;
-    }
-
-    var clips = [["//youtu.be/T3K2Fc4t93Y", 12, 208]];
-    var randNumber = getRandomInt(0, (clips.length - 1));
-
-   if (typeof(Storage) !== "undefined") {
-        if (localStorage.getItem("clips") !== null) {
-            var json_array = jQuery.parseJSON(localStorage.clips);
-			json_array.sort(function (a,b) {
-				return b.views - a.views;
-			});
-			if(json_array.length !== clips.length)
-			{
-				var string = "[";
-				for (i = 0; i < clips.length; i++) {
-					string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": "+clips[i][1]+", \"stopAt\": "+clips[i][2]+"},";
-				}
-				string = string.substr(0, (string.length - 1));
-				string = string + "]";
-				var json_array = jQuery.parseJSON(string);
-				json_array[randNumber].views++;
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[(json_array.length - 1)].startAt+", opacity:1, stopAt:"+json_array[(json_array.length - 1)].stopAt+"}");
-				localStorage.setItem("clips", JSON.stringify(json_array));
-			} else
-			{
-				console.log(json_array);
-				json_array[(json_array.length - 1)].views++;
-				console.log(json_array);
-				$("#bgndVideo").data('property', "{videoURL:'"+json_array[(json_array.length - 1)].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+clips[(json_array.length - 1)][1]+", opacity:1, stopAt:"+clips[(json_array.length - 1)][2]+"}");
-				localStorage.setItem("clips", JSON.stringify(json_array));
-			}
-        } else {
-            var string = "[";
-            for (i = 0; i < clips.length; i++) {
-                string += "{\"id\":" + i + ", \"url\": \"" + clips[i][0] + "\", \"views\": 0, \"startAt\": "+clips[i][1]+", \"stopAt\": "+clips[i][2]+"},";
-            }
-            string = string.substr(0, (string.length - 1));
-            string = string + "]";
-            var json_array = jQuery.parseJSON(string);
-			json_array[randNumber].views++;
-			$("#bgndVideo").data('property', "{videoURL:'"+json_array[randNumber].url+"',containment:'body',autoPlay:true, mute:false, startAt:"+json_array[randNumber].startAt+", opacity:1, stopAt:"+json_array[randNumber].stopAt+"}");
-            localStorage.setItem("clips", JSON.stringify(json_array));
-        }
-    }
-	  </script>
-  </body>
-
+      <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+      <script src="http://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.js"></script>
+      <script src="assets/js/vegas.min.js"></script>
+      <script src="assets/js/jquery.parallax.js"></script>
+      <script src="assets/js/jquery.mb.YTPlayer.min.js"></script>
+      <script src="assets/js/jquery.cycle2.min.js"></script>
+      <script src="assets/js/mgGlitch.min.js"></script>
+      <script src="assets/js/index.js"></script>
+   </body>
 </html>
