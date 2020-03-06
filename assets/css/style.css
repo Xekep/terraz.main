@@ -2242,3 +2242,47 @@ only screen and (max-height:280px) {
 #overlay.edit {
 	transition: 0s
 }
+
+svg .titleLetter
+{
+  stroke:rgb(255,255,255);
+  stroke-dasharray:3000;
+  stroke-dashoffset: 0;
+  stroke-width:3px;
+  fill-opacity:0;
+  animation: animLetterPath 5s linear forwards; /* Set the time here */
+  -webkit-animation: animLetterPath 8s linear forwards;
+}
+
+/* Here their animations */
+
+@keyframes animLetterPath
+{
+  0%
+  {
+    stroke:rgb(0,204,203);
+    stroke-dashoffset: 3000;
+  }
+  50%
+  {
+    stroke:rgb(255,255,0);
+  }
+  100%
+  {
+    stroke-dashoffset: 0;
+    stroke:rgb(255,255,255);
+  }
+}
+
+@-webkit-keyframes animLetterPath
+{
+  from
+  {
+    stroke:rgb(0,0,0);
+    stroke-dashoffset: 3000;
+  }to
+  {
+    stroke-dashoffset: 0;
+    stroke:rgb(255,255,255);
+  }
+}
