@@ -2248,7 +2248,7 @@ svg .titleLetter
   stroke:rgb(255,255,255);
   stroke-dasharray:3000;
   stroke-dashoffset: 0;
-  stroke-width:6px;
+  stroke-width:5px;
   fill-opacity:0;
   animation: animLetterPath 5s linear forwards; /* Set the time here */
   -webkit-animation: animLetterPath 8s linear forwards;
