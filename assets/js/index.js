@@ -1,3 +1,25 @@
+// clipboard
+const token = document.querySelector("url");
+
+token.addEventListener("click", async (event) => {
+  if (!navigator.clipboard) {
+    return;
+  }  
+  
+  try {
+    const text = event.target.innerText;
+    await navigator.clipboard.writeText(text);
+    
+    event.target.dataset.clipboard = text;
+    setTimeout(() =>{
+      delete event.target.dataset.clipboard;
+    }, 1500);    
+  } catch (error) {
+    console.error("Copy failed", error);
+  }
+});
+// clipboard
+
 function customBackground() {
 	$("#canvas").css("background", "#00AB39")
 }
