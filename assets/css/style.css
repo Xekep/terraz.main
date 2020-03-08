@@ -2289,3 +2289,41 @@ svg .titleLetter
     stroke:rgb(255,255,255);
   }
 }
+
+mark {
+  display: inline-flex;
+  padding: .2rem .4rem;
+  background-color: #ffe67d;
+  border-radius: .2rem;
+}
+
+[data-clipboard] {
+  position: relative;
+}
+
+[data-clipboard]::before {
+  content: attr(data-clipboard);
+  position: absolute;
+  background-color: #3eb442;
+  color: #fff;
+  left: 0; right: 0;
+  bottom: 0; top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: pulse 1s;
+}
+
+@keyframes pulse {
+  from {
+    transform: scale3d(1, 1, 1);
+  }
+
+  50% {
+    transform: scale3d(1.03, 1.03, 1.03);
+  }
+
+  to {
+    transform: scale3d(1, 1, 1);
+  }
+}
