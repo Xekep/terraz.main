@@ -2251,8 +2251,8 @@ svg .titleLetter
   stroke-width:5px;
   fill-opacity:0;
   animation: animLetterPath 5s linear forwards;
-  -webkit-animation-delay: 2s;
-  animation-delay: 2s;
+  -webkit-animation-delay: 10s;
+  animation-delay: 10s;
   -webkit-animation: animLetterPath 8s linear forwards;
 }
 
