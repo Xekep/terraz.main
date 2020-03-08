@@ -2250,8 +2250,9 @@ svg .titleLetter
   stroke-dashoffset: 0;
   stroke-width:5px;
   fill-opacity:0;
-  animation: animLetterPath 5s linear 3s forwards;
-  -webkit-animation: animLetterPath 8s linear 3s forwards;
+  opacity:0;
+  animation: animLetterPath 5s linear 2s forwards;
+  -webkit-animation: animLetterPath 8s linear 2s forwards;
 }
 
 /* Here their animations */
@@ -2260,6 +2261,7 @@ svg .titleLetter
 {
   0%
   {
+    opacity:1;
     stroke:rgb(0,204,203);
     stroke-dashoffset: 3000;
   }
