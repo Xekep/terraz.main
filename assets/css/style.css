@@ -2271,6 +2271,7 @@ svg .titleLetter
   }
   100%
   {
+    opacity:1;
     stroke-dashoffset: 0;
     stroke:rgb(255,255,255);
   }
