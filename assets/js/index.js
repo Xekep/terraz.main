@@ -25,8 +25,9 @@ serverAddr.addEventListener("click", async (event) => {
       serverAddr.classList.remove( 'copied' );
       clearInterval(temp);
     }, 600 );
-	    
-	  
+ } else {
+    console.info( 'document.execCommand went wrong…' )
+  }  
 	  
   } catch (error) {
     console.error("Copy failed", error);
