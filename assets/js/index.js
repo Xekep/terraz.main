@@ -1,6 +1,6 @@
 // clipboard
 const serverAddr = document.querySelector("url");
-const copiedText = document.getElementById('copy'),
+const copiedText = document.getElementById('copy');
 
 serverAddr.addEventListener("click", async (event) => {
   if (!navigator.clipboard) {
