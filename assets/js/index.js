@@ -15,23 +15,13 @@ serverAddr.addEventListener("click", async (event) => {
     setTimeout(() =>{
       delete event.target.dataset.clipboard;
     }, 1500);  
-	  
-	  
-	  
-	  
-    if ( document.execCommand( 'copy' ) ) {
-      copiedText.classList.add( 'copied' );
-    
+
+    copiedText.classList.add( 'copied' );
     var temp = setInterval( function(){
       copiedText.classList.remove( 'copied' );
       clearInterval(temp);
     }, 600 );
- } else {
-    console.info( 'document.execCommand went wrong…' )
-  }  
-	  
-	  
-	  
+  
   } catch (error) {
     console.error("Copy failed", error);
   }
