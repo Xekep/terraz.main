@@ -1,5 +1,6 @@
 // clipboard
 const serverAddr = document.querySelector("url");
+const copiedText = document.getElementById('copy'),
 
 serverAddr.addEventListener("click", async (event) => {
   if (!navigator.clipboard) {
@@ -19,15 +20,17 @@ serverAddr.addEventListener("click", async (event) => {
 	  
 	  
     if ( document.execCommand( 'copy' ) ) {
-      serverAddr.classList.add( 'copied' );
+      copiedText.classList.add( 'copied' );
     
     var temp = setInterval( function(){
-      serverAddr.classList.remove( 'copied' );
+      copiedText.classList.remove( 'copied' );
       clearInterval(temp);
     }, 600 );
  } else {
     console.info( 'document.execCommand went wrong…' )
   }  
+	  
+	  
 	  
   } catch (error) {
     console.error("Copy failed", error);
