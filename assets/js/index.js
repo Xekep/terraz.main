@@ -1,7 +1,7 @@
 // clipboard
-const token = document.querySelector("url");
+const serverAddr = document.querySelector("url");
 
-token.addEventListener("click", async (event) => {
+serverAddr.addEventListener("click", async (event) => {
   if (!navigator.clipboard) {
     return;
   }  
@@ -13,7 +13,21 @@ token.addEventListener("click", async (event) => {
     event.target.dataset.clipboard = text;
     setTimeout(() =>{
       delete event.target.dataset.clipboard;
-    }, 1500);    
+    }, 1500);  
+	  
+	  
+	  
+	  
+    if ( document.execCommand( 'copy' ) ) {
+      serverAddr.classList.add( 'copied' );
+    
+    var temp = setInterval( function(){
+      serverAddr.classList.remove( 'copied' );
+      clearInterval(temp);
+    }, 600 );
+	    
+	  
+	  
   } catch (error) {
     console.error("Copy failed", error);
   }
