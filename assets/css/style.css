@@ -2327,3 +2327,8 @@ mark {
     transform: scale3d(1, 1, 1);
   }
 }
+
+.copied .copiedtext {
+  opacity: 1;
+  transform: translateY(-2em);
+}
