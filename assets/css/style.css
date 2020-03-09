@@ -2334,7 +2334,7 @@ mark {
   text-align: center;
   opacity: 0;
   transform: translateY(-1em);
-  color: #000;
+  color: #FFFFFF;
   transition: all .500s;
 }
 
