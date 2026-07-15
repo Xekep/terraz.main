@@ -15,6 +15,13 @@
     }
   }
 
+  function loadVisualRefinements() {
+    var link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = "assets/css/visual-refinements.css";
+    document.head.appendChild(link);
+  }
+
   function addAccessibilityStyles() {
     var style = document.createElement("style");
     style.textContent = [
@@ -271,6 +278,7 @@
   }
 
   improveDocumentMetadata();
+  loadVisualRefinements();
   addAccessibilityStyles();
 
   $(function () {
