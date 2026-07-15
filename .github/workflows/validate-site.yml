@@ -14,5 +14,11 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Check JavaScript syntax
+        run: node --check assets/js/index.js
+
+      - name: Check Python syntax
+        run: python3 -m py_compile .github/scripts/validate_site.py
+
       - name: Validate HTML and local links
         run: python3 .github/scripts/validate_site.py
