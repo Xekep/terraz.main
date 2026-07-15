@@ -15,7 +15,9 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Check JavaScript syntax
-        run: node --check assets/js/index.js
+        run: |
+          node --check assets/js/index.js
+          node --check assets/js/mgGlitch.min.js
 
       - name: Check Python syntax
         run: python3 -m py_compile .github/scripts/validate_site.py
