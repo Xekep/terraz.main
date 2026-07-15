@@ -25,13 +25,96 @@
   function addAccessibilityStyles() {
     var style = document.createElement("style");
     style.textContent = [
-      "url[role=button]{cursor:pointer;outline:none}",
-      "url[role=button]:focus-visible{box-shadow:0 0 0 3px rgba(31,184,178,.75)}",
       ".social-link:focus-visible{outline:3px solid rgba(31,184,178,.9);outline-offset:4px}",
       ".hero .front-content .controls button{border:0;background:transparent;padding:0;color:inherit}",
       "@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}"
     ].join("");
     document.head.appendChild(style);
+  }
+
+  function setupComposition() {
+    var container = document.querySelector(".hero-1 .front-content .container-mid");
+    if (!container) {
+      return;
+    }
+
+    var cycleWrapper = container.querySelector(".cycle-wrapper");
+    var cycle = container.querySelector("#cycle");
+    var socialRow = null;
+    var addressRow = null;
+    var paragraphs = container.getElementsByTagName("p");
+    var index;
+
+    for (index = 0; index < paragraphs.length; index += 1) {
+      if (!socialRow && paragraphs[index].querySelector('a[href*="vk.com"]')) {
+        socialRow = paragraphs[index];
+      }
+      if (!addressRow && paragraphs[index].querySelector("url")) {
+        addressRow = paragraphs[index];
+      }
+    }
+
+    container.classList.add("hero-composition");
+
+    if (cycleWrapper) {
+      cycleWrapper.classList.add("hero-message-block");
+    }
+
+    if (cycle) {
+      cycle.innerHTML =
+        '<div class="slide hero-message">' +
+          '<h1>ИГРАЙ<br>УЖЕ СЕЙЧАС</h1>' +
+          '<div class="hero-subtitle">Лучший русскоязычный сервер Terraria</div>' +
+        "</div>";
+    }
+
+    if (addressRow) {
+      addressRow.classList.add("server-address-row");
+
+      var copyPanel = addressRow.querySelector("mark");
+      if (copyPanel) {
+        copyPanel.classList.add("server-copy");
+
+        if (!copyPanel.querySelector(".copy-action")) {
+          var copyAction = document.createElement("span");
+          copyAction.className = "copy-action";
+          copyAction.setAttribute("aria-hidden", "true");
+          copyAction.innerHTML =
+            '<i class="fa fa-files-o" aria-hidden="true"></i>' +
+            '<span class="copy-action-label">Копировать</span>';
+          copyPanel.appendChild(copyAction);
+        }
+      }
+    }
+
+    if (socialRow) {
+      socialRow.classList.add("social-links-row");
+    }
+
+    var secondaryLinks = container.querySelector(".hero-secondary-links");
+    if (!secondaryLinks) {
+      secondaryLinks = document.createElement("nav");
+      secondaryLinks.className = "hero-secondary-links";
+      secondaryLinks.setAttribute("aria-label", "Дополнительные способы подключения");
+      secondaryLinks.innerHTML =
+        '<a href="steam://rungameid/105600// -j s.terraz.ru -p 7777">Запустить через Steam</a>' +
+        '<span aria-hidden="true">•</span>' +
+        '<a href="https://fun.terraz.ru/">FUN.TERRAZ.RU</a>';
+    }
+
+    if (cycleWrapper && addressRow) {
+      cycleWrapper.insertAdjacentElement("afterend", addressRow);
+    }
+
+    if (addressRow) {
+      addressRow.insertAdjacentElement("afterend", secondaryLinks);
+    } else if (cycleWrapper) {
+      cycleWrapper.insertAdjacentElement("afterend", secondaryLinks);
+    }
+
+    if (socialRow) {
+      secondaryLinks.insertAdjacentElement("afterend", socialRow);
+    }
   }
 
   function labelSocialLinks() {
@@ -60,17 +143,33 @@
     });
   }
 
-  function showCopiedState(statusElement) {
-    if (!statusElement) {
-      return;
+  function showCopiedState(statusElement, trigger) {
+    if (statusElement) {
+      statusElement.classList.add("copied");
+      statusElement.setAttribute("aria-live", "polite");
     }
 
-    statusElement.classList.add("copied");
-    statusElement.setAttribute("aria-live", "polite");
+    if (trigger) {
+      trigger.classList.add("is-copied");
+      var actionLabel = trigger.querySelector(".copy-action-label");
+      if (actionLabel) {
+        actionLabel.textContent = "Скопировано";
+      }
+    }
 
     window.setTimeout(function () {
-      statusElement.classList.remove("copied");
-    }, 900);
+      if (statusElement) {
+        statusElement.classList.remove("copied");
+      }
+
+      if (trigger) {
+        trigger.classList.remove("is-copied");
+        var actionLabel = trigger.querySelector(".copy-action-label");
+        if (actionLabel) {
+          actionLabel.textContent = "Копировать";
+        }
+      }
+    }, 1300);
   }
 
   function fallbackCopy(text) {
@@ -96,37 +195,40 @@
   function setupClipboard() {
     var serverAddress = document.querySelector("url");
     var copiedStatus = document.getElementById("copy");
+    var trigger = document.querySelector(".server-copy") || serverAddress;
 
-    if (!serverAddress) {
+    if (!serverAddress || !trigger) {
       return;
     }
 
-    serverAddress.setAttribute("role", "button");
-    serverAddress.setAttribute("tabindex", "0");
-    serverAddress.setAttribute("aria-label", "Скопировать адрес сервера S.TERRAZ.RU:7777");
+    trigger.setAttribute("role", "button");
+    trigger.setAttribute("tabindex", "0");
+    trigger.setAttribute("aria-label", "Скопировать адрес сервера S.TERRAZ.RU:7777");
+
+    function completeCopy() {
+      showCopiedState(copiedStatus, trigger);
+    }
 
     function copyAddress() {
       var text = serverAddress.textContent.trim();
 
       if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(text).then(function () {
-          showCopiedState(copiedStatus);
-        }).catch(function (error) {
+        navigator.clipboard.writeText(text).then(completeCopy).catch(function (error) {
           console.error("Copy failed", error);
           if (fallbackCopy(text)) {
-            showCopiedState(copiedStatus);
+            completeCopy();
           }
         });
         return;
       }
 
       if (fallbackCopy(text)) {
-        showCopiedState(copiedStatus);
+        completeCopy();
       }
     }
 
-    serverAddress.addEventListener("click", copyAddress);
-    serverAddress.addEventListener("keydown", function (event) {
+    trigger.addEventListener("click", copyAddress);
+    trigger.addEventListener("keydown", function (event) {
       if (event.key === "Enter" || event.key === " ") {
         event.preventDefault();
         copyAddress();
@@ -230,22 +332,6 @@
     }, 300);
   }
 
-  function setupSlides() {
-    if (!$.fn.cycle) {
-      return;
-    }
-
-    $("#cycle").cycle({
-      fx: prefersReducedMotion ? "none" : "scrollVert",
-      timeout: prefersReducedMotion ? 0 : 6000,
-      delay: 0,
-      autoHeight: "container",
-      speed: prefersReducedMotion ? 0 : 800,
-      slides: ".slide",
-      log: false
-    });
-  }
-
   function setupParallax() {
     if (prefersReducedMotion || isLikelyMobile || !$.fn.parallax) {
       return;
@@ -282,9 +368,9 @@
   addAccessibilityStyles();
 
   $(function () {
+    setupComposition();
     labelSocialLinks();
     setupClipboard();
-    setupSlides();
     setupVideoBackground();
     setupParallax();
   });
