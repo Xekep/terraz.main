@@ -1,8 +1,166 @@
-<!DOCTYPE html>
- <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <title>TerraZ</title>
-    <meta http-equiv="refresh" content="0; url=https://terraz.ru">
-  </head>
- </html>
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, follow">
+  <title>Страница не найдена — TerraZ</title>
+  <meta name="description" content="Запрошенная страница не найдена. Возвращаемся на главную TerraZ.">
+  <link rel="shortcut icon" href="/assets/favicon.ico">
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Open Sans", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      min-height: 100%;
+      margin: 0;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      color: #fff;
+      background: #111 url("/assets/images/1.jpg") center / cover no-repeat;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, .72);
+      backdrop-filter: blur(3px);
+    }
+
+    main {
+      position: relative;
+      z-index: 1;
+      width: min(680px, calc(100% - 40px));
+      padding: 48px 32px;
+      text-align: center;
+      animation: appear .7s ease both;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(96px, 24vw, 220px);
+      font-weight: 600;
+      line-height: .8;
+      letter-spacing: -.06em;
+      color: #1fb8b2;
+    }
+
+    h2 {
+      margin: 36px 0 14px;
+      font-size: clamp(24px, 5vw, 38px);
+      font-weight: 400;
+    }
+
+    p {
+      margin: 0 auto 30px;
+      max-width: 560px;
+      font-size: 16px;
+      line-height: 1.65;
+      color: rgba(255, 255, 255, .78);
+    }
+
+    a {
+      display: inline-flex;
+      min-height: 48px;
+      align-items: center;
+      justify-content: center;
+      padding: 0 24px;
+      border: 2px solid #fff;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+      letter-spacing: .04em;
+      transition: background-color .2s ease, color .2s ease, transform .2s ease;
+    }
+
+    a:hover,
+    a:focus-visible {
+      color: #111;
+      background: #fff;
+      transform: translateY(-2px);
+      outline: none;
+    }
+
+    .countdown {
+      display: block;
+      margin-top: 18px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, .55);
+    }
+
+    body.leaving main {
+      animation: leave .5s ease both;
+    }
+
+    @keyframes appear {
+      from {
+        opacity: 0;
+        transform: translateY(18px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes leave {
+      to {
+        opacity: 0;
+        transform: translateY(-14px);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1 aria-label="Ошибка 404">404</h1>
+    <h2>Такой страницы нет</h2>
+    <p>Адрес мог устареть или в нём закралась ошибка. Через несколько секунд откроется главная страница TerraZ.</p>
+    <a href="/">Вернуться на главную</a>
+    <span class="countdown" aria-live="polite">Переход через <strong id="seconds">7</strong> сек.</span>
+  </main>
+  <script>
+    (function () {
+      "use strict";
+
+      var remaining = 7;
+      var output = document.getElementById("seconds");
+      var timer = window.setInterval(function () {
+        remaining -= 1;
+        output.textContent = remaining;
+
+        if (remaining > 0) {
+          return;
+        }
+
+        window.clearInterval(timer);
+        document.body.classList.add("leaving");
+        window.setTimeout(function () {
+          window.location.replace("/");
+        }, 450);
+      }, 1000);
+    }());
+  </script>
+</body>
+</html>
