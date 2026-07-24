@@ -17,10 +17,12 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check assets/js/index.js
+          node --check assets/js/logo-animation.js
           node --check assets/js/mgGlitch.min.js
           node --check assets/js/redirect.js
           node --check assets/js/error.js
           node --check .github/scripts/verify_live_homepage.mjs
+          node --check .github/scripts/verify_live_homepage_v2.mjs
 
       - name: Check Python syntax
         run: |
