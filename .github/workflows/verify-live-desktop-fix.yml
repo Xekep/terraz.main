@@ -29,7 +29,10 @@ jobs:
       - name: Verify public homepage in normal and reduced-motion desktop modes
         env:
           LIVE_URL: https://terraz.ru/
-        run: node .github/scripts/verify_live_homepage.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node .github/scripts/verify_live_homepage.mjs 2>&1 | tee live-browser-log.txt
 
       - name: Upload browser diagnostics
         if: always()
@@ -40,5 +43,6 @@ jobs:
             live-homepage.png
             live-homepage-reduced-motion.png
             live-homepage-report.json
+            live-browser-log.txt
           if-no-files-found: warn
           retention-days: 2
