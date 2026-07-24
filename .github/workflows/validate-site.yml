@@ -17,10 +17,11 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check assets/js/index.js
-          node --check assets/js/mgGlitch.min.js
+          node --check assets/js/redirect.js
+          node --check assets/js/error.js
 
       - name: Check Python syntax
         run: python3 -m py_compile .github/scripts/validate_site.py
 
-      - name: Validate HTML and local links
+      - name: Validate HTML, assets and code hygiene
         run: python3 .github/scripts/validate_site.py
