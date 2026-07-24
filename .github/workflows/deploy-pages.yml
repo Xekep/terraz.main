@@ -122,7 +122,7 @@ jobs:
               --write-out '%{http_code}' \
               "$probe_url")"
 
-            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-2"' live-index.html; then
+            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-3"' live-index.html; then
               live_ready=true
               break
             fi
@@ -176,6 +176,7 @@ jobs:
           grep -Fq 'fetch(source' logo-animation.js
           grep -Fq 'DOMParser' logo-animation.js
           grep -Fq 'replaceChildren' logo-animation.js
+          grep -Fq 'path.style.transitionProperty = "none"' logo-animation.js
           grep -Fq 'path.style.fill = "none"' logo-animation.js
           grep -Fq 'path.style.stroke = "#ffffff"' logo-animation.js
           grep -Fq 'path.style.strokeWidth = "1.15"' logo-animation.js

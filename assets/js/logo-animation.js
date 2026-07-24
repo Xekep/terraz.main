@@ -8,6 +8,8 @@
       animation.cancel();
     });
 
+    path.style.transitionProperty = "none";
+    path.style.transitionDuration = "0s";
     path.style.animation = "none";
     path.style.fill = "none";
     path.style.fillOpacity = "0";

@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260725-2";
+const expectedAssetsVersion = "20260725-3";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -58,6 +58,7 @@ async function readLogoState(page) {
       fillOpacity: Number.parseFloat(pathStyle?.fillOpacity ?? "0"),
       stroke: pathStyle?.stroke ?? "",
       strokeWidth: Number.parseFloat(pathStyle?.strokeWidth ?? "NaN"),
+      transitionProperty: pathStyle?.transitionProperty ?? "",
       pathFilter: pathStyle?.filter ?? "none",
       hostBackground: hostStyle?.backgroundColor ?? "",
       hostFilter: hostStyle?.filter ?? "none",
@@ -76,10 +77,12 @@ async function verifyLogoDrawing(page) {
   const end = await readLogoState(page);
 
   const hasDrawingAnimation = start.animations.some((animation) => animation.id === "terraz-logo-write");
+  const hasUnexpectedAnimations = start.animations.some((animation) => animation.id !== "terraz-logo-write");
   if (
-    !start.hostExists || start.objectExists || !start.svgExists || !start.pathExists || !hasDrawingAnimation ||
+    !start.hostExists || start.objectExists || !start.svgExists || !start.pathExists || !hasDrawingAnimation || hasUnexpectedAnimations ||
     !Number.isFinite(start.pathLength) || start.pathLength < 1000 ||
     !Number.isFinite(start.dashArray) || !Number.isFinite(start.dashOffset) ||
+    start.dashOffset < start.pathLength * 0.8 || start.transitionProperty !== "none" ||
     !Number.isFinite(middle.dashOffset) || middle.dashOffset >= start.dashOffset ||
     end.dashOffset > 2 || end.fill !== "none" || end.fillOpacity > 0.001 ||
     end.stroke !== "rgb(255, 255, 255)" || !Number.isFinite(end.strokeWidth) ||
