@@ -122,7 +122,7 @@ jobs:
               --write-out '%{http_code}' \
               "$probe_url")"
 
-            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-1"' live-index.html; then
+            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-2"' live-index.html; then
               live_ready=true
               break
             fi
@@ -170,8 +170,12 @@ jobs:
           grep -Fq 'scale(1.2)' static-video.css
           ! grep -Fq 'scale(1.02)' static-video.css
           grep -Fq 'background: transparent !important' logo-drawing.css
+          grep -Fq '.hero__logo-svg' logo-drawing.css
           grep -Fq 'box-shadow: none' logo-drawing.css
           grep -Fq 'filter: none' logo-drawing.css
+          grep -Fq 'fetch(source' logo-animation.js
+          grep -Fq 'DOMParser' logo-animation.js
+          grep -Fq 'replaceChildren' logo-animation.js
           grep -Fq 'path.style.fill = "none"' logo-animation.js
           grep -Fq 'path.style.stroke = "#ffffff"' logo-animation.js
           grep -Fq 'path.style.strokeWidth = "1.15"' logo-animation.js
@@ -179,6 +183,8 @@ jobs:
           grep -Fq 'path.animate' logo-animation.js
           ! grep -Fq '#1fb8b2' logo-animation.js
           ! grep -Fq '#71e7df' logo-animation.js
+          ! grep -Fq '<object' live-index.html
+          grep -Fq 'id="hero-logo"' live-index.html
           grep -Fq 'showCopyStatus' homepage.js
           grep -Fq 'DEFAULT_LOOP_START = 12' homepage.js
           grep -Fq 'handleVideoEnded' homepage.js

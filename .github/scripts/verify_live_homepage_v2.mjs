@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260725-1";
+const expectedAssetsVersion = "20260725-2";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -33,12 +33,12 @@ async function openPublished(page, mode) {
 
 async function readLogoState(page) {
   return page.evaluate(() => {
-    const object = document.querySelector("#hero-logo-object");
-    const logoDocument = object?.contentDocument;
-    const path = logoDocument?.querySelector(".title-letter");
+    const host = document.querySelector("#hero-logo");
+    const svg = host?.querySelector("svg.hero__logo-svg");
+    const path = svg?.querySelector(".title-letter");
     const pathStyle = path ? getComputedStyle(path) : null;
-    const objectStyle = object ? getComputedStyle(object) : null;
-    const svgStyle = logoDocument?.documentElement ? getComputedStyle(logoDocument.documentElement) : null;
+    const hostStyle = host ? getComputedStyle(host) : null;
+    const svgStyle = svg ? getComputedStyle(svg) : null;
     const animations = path?.getAnimations().map((animation) => ({
       id: animation.id,
       currentTime: Number(animation.currentTime ?? -1),
@@ -46,10 +46,12 @@ async function readLogoState(page) {
     })) ?? [];
 
     return {
-      objectExists: Boolean(object),
-      ready: object?.dataset.drawingReady === "true",
+      hostExists: Boolean(host),
+      objectExists: Boolean(document.querySelector("#hero-logo-object, .hero__logo object")),
+      ready: host?.dataset.drawingReady === "true",
+      svgExists: Boolean(svg),
       pathExists: Boolean(path),
-      pathLength: Number.parseFloat(object?.dataset.pathLength ?? "NaN"),
+      pathLength: Number.parseFloat(host?.dataset.pathLength ?? "NaN"),
       dashOffset: Number.parseFloat(pathStyle?.strokeDashoffset ?? "NaN"),
       dashArray: Number.parseFloat(pathStyle?.strokeDasharray ?? "NaN"),
       fill: pathStyle?.fill ?? "",
@@ -57,8 +59,8 @@ async function readLogoState(page) {
       stroke: pathStyle?.stroke ?? "",
       strokeWidth: Number.parseFloat(pathStyle?.strokeWidth ?? "NaN"),
       pathFilter: pathStyle?.filter ?? "none",
-      objectBackground: objectStyle?.backgroundColor ?? "",
-      objectFilter: objectStyle?.filter ?? "none",
+      hostBackground: hostStyle?.backgroundColor ?? "",
+      hostFilter: hostStyle?.filter ?? "none",
       svgBackground: svgStyle?.backgroundColor ?? "",
       animations,
     };
@@ -66,7 +68,7 @@ async function readLogoState(page) {
 }
 
 async function verifyLogoDrawing(page) {
-  await page.waitForFunction(() => document.querySelector("#hero-logo-object")?.dataset.drawingReady === "true", { timeout: 15_000 });
+  await page.waitForFunction(() => document.querySelector("#hero-logo")?.dataset.drawingReady === "true", { timeout: 15_000 });
   const start = await readLogoState(page);
   await delay(700);
   const middle = await readLogoState(page);
@@ -75,17 +77,17 @@ async function verifyLogoDrawing(page) {
 
   const hasDrawingAnimation = start.animations.some((animation) => animation.id === "terraz-logo-write");
   if (
-    !start.objectExists || !start.pathExists || !hasDrawingAnimation ||
+    !start.hostExists || start.objectExists || !start.svgExists || !start.pathExists || !hasDrawingAnimation ||
     !Number.isFinite(start.pathLength) || start.pathLength < 1000 ||
     !Number.isFinite(start.dashArray) || !Number.isFinite(start.dashOffset) ||
     !Number.isFinite(middle.dashOffset) || middle.dashOffset >= start.dashOffset ||
     end.dashOffset > 2 || end.fill !== "none" || end.fillOpacity > 0.001 ||
     end.stroke !== "rgb(255, 255, 255)" || !Number.isFinite(end.strokeWidth) ||
     end.strokeWidth < 0.9 || end.strokeWidth > 1.3 || end.pathFilter !== "none" ||
-    !isTransparentColor(end.objectBackground) || !isTransparentColor(end.svgBackground) ||
-    end.objectFilter !== "none"
+    !isTransparentColor(end.hostBackground) || !isTransparentColor(end.svgBackground) ||
+    end.hostFilter !== "none"
   ) {
-    throw new Error(`Logo is not a thin white transparent drawing: ${JSON.stringify({ start, middle, end })}`);
+    throw new Error(`Logo is not an inline thin white transparent drawing: ${JSON.stringify({ start, middle, end })}`);
   }
   return { start, middle, end };
 }
