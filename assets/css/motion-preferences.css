@@ -1,4 +1,4 @@
-/* Keep essential feedback and background controls usable when OS animations are disabled. */
+/* TerraZ deliberately keeps its short branded entrance animations enabled. */
 
 @media (prefers-reduced-motion: reduce) {
   .hero__video,
@@ -11,14 +11,49 @@
     display: flex !important;
   }
 
+  .hero__logo-stage {
+    animation: logo-stage-in .7s .08s cubic-bezier(.22, .61, .36, 1) both !important;
+  }
+
+  .hero__logo--base {
+    animation: logo-base-fill 3.1s .12s cubic-bezier(.4, 0, .2, 1) forwards !important;
+  }
+
+  .hero__logo--trace {
+    animation: logo-trace 3.1s .12s cubic-bezier(.4, 0, .2, 1) forwards !important;
+  }
+
+  .hero__message {
+    animation: section-in .72s .5s cubic-bezier(.22, .61, .36, 1) both !important;
+  }
+
+  .server-actions {
+    animation: section-in .72s .68s cubic-bezier(.22, .61, .36, 1) both !important;
+  }
+
+  .social-links {
+    animation: section-in .72s .86s cubic-bezier(.22, .61, .36, 1) both !important;
+  }
+
+  .portal-link {
+    animation: portal-soft-in .65s .42s cubic-bezier(.22, .61, .36, 1) both !important;
+  }
+
   .copy-status.is-visible {
-    opacity: 1 !important;
-    animation: none !important;
-    transition: none !important;
-    transform: translate(-50%, -100%) scale(1) !important;
+    animation: copy-fade 1.65s cubic-bezier(.22, .61, .36, 1) both !important;
   }
 
   .server-copy.is-copied .server-copy__icon {
-    animation: none !important;
+    animation: check-pop .35s cubic-bezier(.18, .89, .32, 1.28) !important;
+  }
+
+  body.video-ready .video-controls,
+  body.has-video .video-controls {
+    animation: controls-in .45s .15s ease both !important;
+  }
+
+  .video-controls,
+  .video-control {
+    transition-duration: .25s !important;
   }
 }
