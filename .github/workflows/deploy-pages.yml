@@ -1,4 +1,4 @@
-name: Deploy site
+name: Rebuild Pages site
 
 on:
   push:
@@ -9,30 +9,87 @@ on:
 permissions:
   contents: read
   pages: write
-  id-token: write
+  issues: write
 
 concurrency:
-  group: github-pages
+  group: github-pages-rebuild
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  rebuild:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
+      - name: Inspect Pages configuration and request rebuild
+        id: pages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_URL: https://api.github.com/repos/${{ github.repository }}/pages
+        shell: bash
+        run: |
+          set -u
 
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
+          request() {
+            local method="$1"
+            local url="$2"
+            local output="$3"
+            curl --silent --show-error \
+              --request "$method" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --output "$output" \
+              --write-out "%{http_code}" \
+              "$url"
+          }
 
-      - name: Upload site artifact
-        uses: actions/upload-pages-artifact@v4
-        with:
-          path: .
+          config_status="$(request GET "${API_URL}" pages-config.json)"
+          build_status="$(request POST "${API_URL}/builds" pages-build.json)"
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          echo "config_status=${config_status}" >> "$GITHUB_OUTPUT"
+          echo "build_status=${build_status}" >> "$GITHUB_OUTPUT"
+
+          {
+            echo "## GitHub Pages rebuild"
+            echo
+            echo "- commit: \`${GITHUB_SHA}\`"
+            echo "- Pages config HTTP: \`${config_status}\`"
+            echo "- rebuild request HTTP: \`${build_status}\`"
+            echo
+            echo "### Pages configuration"
+            echo '```json'
+            cat pages-config.json
+            echo
+            echo '```'
+            echo
+            echo "### Rebuild response"
+            echo '```json'
+            cat pages-build.json
+            echo
+            echo '```'
+          } > pages-report.md
+
+          if [[ "$build_status" != "201" ]]; then
+            echo "Pages rebuild request failed" >&2
+            exit 1
+          fi
+
+      - name: Post diagnostic report to PR 9
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          body="$(python3 - <<'PY'
+          import json
+          from pathlib import Path
+          print(json.dumps({"body": Path("pages-report.md").read_text(encoding="utf-8")}))
+          PY
+          )"
+
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/9/comments" \
+            --data "$body"
