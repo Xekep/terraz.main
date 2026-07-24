@@ -1,0 +1,9 @@
+/* Small compatibility repair for the Telegram social icon. */
+
+.social-link__icon--telegram {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTIxIDQgMTguMiAxOWMtLjIgMS0uOCAxLjMtMS43LjhsLTQuNi0zLjQtMi4yIDIuMWMtLjMuMy0uNS41LTEgLjVsLjMtNC43IDguNi03LjhjLjQtLjMtLjEtLjUtLjYtLjJMNi40IDEzbC00LjYtMS40Yy0xLS4zLTEtMSAuMi0xLjVMMTkuNiAzLjNjLjgtLjMgMS42LjIgMS40LjdaIiBmaWxsPSIjZmZmIi8+PC9zdmc+") !important;
+}
+
+.social-link__icon--telegram > svg {
+  display: none;
+}
