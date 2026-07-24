@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260724-9";
+const expectedAssetsVersion = "20260725-1";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -14,6 +14,10 @@ const browser = await puppeteer.launch({
   headless: true,
   args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--autoplay-policy=no-user-gesture-required"],
 });
+
+function isTransparentColor(value) {
+  return value === "transparent" || value === "rgba(0, 0, 0, 0)";
+}
 
 async function openPublished(page, mode) {
   for (let attempt = 1; attempt <= 30; attempt += 1) {
@@ -30,8 +34,11 @@ async function openPublished(page, mode) {
 async function readLogoState(page) {
   return page.evaluate(() => {
     const object = document.querySelector("#hero-logo-object");
-    const path = object?.contentDocument?.querySelector(".title-letter");
-    const style = path ? getComputedStyle(path) : null;
+    const logoDocument = object?.contentDocument;
+    const path = logoDocument?.querySelector(".title-letter");
+    const pathStyle = path ? getComputedStyle(path) : null;
+    const objectStyle = object ? getComputedStyle(object) : null;
+    const svgStyle = logoDocument?.documentElement ? getComputedStyle(logoDocument.documentElement) : null;
     const animations = path?.getAnimations().map((animation) => ({
       id: animation.id,
       currentTime: Number(animation.currentTime ?? -1),
@@ -43,9 +50,16 @@ async function readLogoState(page) {
       ready: object?.dataset.drawingReady === "true",
       pathExists: Boolean(path),
       pathLength: Number.parseFloat(object?.dataset.pathLength ?? "NaN"),
-      dashOffset: Number.parseFloat(style?.strokeDashoffset ?? "NaN"),
-      dashArray: Number.parseFloat(style?.strokeDasharray ?? "NaN"),
-      fillOpacity: Number.parseFloat(style?.fillOpacity ?? "0"),
+      dashOffset: Number.parseFloat(pathStyle?.strokeDashoffset ?? "NaN"),
+      dashArray: Number.parseFloat(pathStyle?.strokeDasharray ?? "NaN"),
+      fill: pathStyle?.fill ?? "",
+      fillOpacity: Number.parseFloat(pathStyle?.fillOpacity ?? "0"),
+      stroke: pathStyle?.stroke ?? "",
+      strokeWidth: Number.parseFloat(pathStyle?.strokeWidth ?? "NaN"),
+      pathFilter: pathStyle?.filter ?? "none",
+      objectBackground: objectStyle?.backgroundColor ?? "",
+      objectFilter: objectStyle?.filter ?? "none",
+      svgBackground: svgStyle?.backgroundColor ?? "",
       animations,
     };
   });
@@ -56,7 +70,7 @@ async function verifyLogoDrawing(page) {
   const start = await readLogoState(page);
   await delay(700);
   const middle = await readLogoState(page);
-  await delay(3_500);
+  await delay(3_900);
   const end = await readLogoState(page);
 
   const hasDrawingAnimation = start.animations.some((animation) => animation.id === "terraz-logo-write");
@@ -65,9 +79,13 @@ async function verifyLogoDrawing(page) {
     !Number.isFinite(start.pathLength) || start.pathLength < 1000 ||
     !Number.isFinite(start.dashArray) || !Number.isFinite(start.dashOffset) ||
     !Number.isFinite(middle.dashOffset) || middle.dashOffset >= start.dashOffset ||
-    end.dashOffset > 2 || end.fillOpacity < 0.1
+    end.dashOffset > 2 || end.fill !== "none" || end.fillOpacity > 0.001 ||
+    end.stroke !== "rgb(255, 255, 255)" || !Number.isFinite(end.strokeWidth) ||
+    end.strokeWidth < 0.9 || end.strokeWidth > 1.3 || end.pathFilter !== "none" ||
+    !isTransparentColor(end.objectBackground) || !isTransparentColor(end.svgBackground) ||
+    end.objectFilter !== "none"
   ) {
-    throw new Error(`Logo path is not genuinely drawn: ${JSON.stringify({ start, middle, end })}`);
+    throw new Error(`Logo is not a thin white transparent drawing: ${JSON.stringify({ start, middle, end })}`);
   }
   return { start, middle, end };
 }
@@ -114,11 +132,19 @@ async function verifyMode(mode, reducedMotion, screenshotPath) {
     return video?.currentSrc === source && video.readyState >= 2 && video.currentTime >= 11.5 && !video.paused;
   }, { timeout: 30_000 }, expectedVideoUrl);
 
-  const controls = await page.evaluate(() => {
+  const videoAndControls = await page.evaluate(() => {
+    const video = document.querySelector("#hero-video-element");
+    const videoStyle = video ? getComputedStyle(video) : null;
+    const matrix = videoStyle?.transform && videoStyle.transform !== "none"
+      ? new DOMMatrixReadOnly(videoStyle.transform)
+      : null;
     const pause = document.querySelector("#video-pause");
     const volume = document.querySelector("#video-volume");
     const rect = pause?.getBoundingClientRect();
     return {
+      videoScaleX: matrix?.a ?? 0,
+      videoScaleY: matrix?.d ?? 0,
+      objectFit: videoStyle?.objectFit ?? "",
       pauseWidth: rect?.width ?? 0,
       pauseState: pause?.dataset.state ?? "",
       volumeState: volume?.dataset.muted ?? "",
@@ -126,13 +152,20 @@ async function verifyMode(mode, reducedMotion, screenshotPath) {
       speakerSvg: Boolean(volume?.querySelector(".video-control__speaker")),
     };
   });
-  if (controls.pauseWidth < 30 || controls.pauseWidth > 34 || controls.pauseState !== "playing" || controls.volumeState !== "true" || !controls.pauseSvg || !controls.speakerSvg) {
-    throw new Error(`Video controls are invalid: ${JSON.stringify(controls)}`);
+  if (
+    videoAndControls.videoScaleX < 1.19 || videoAndControls.videoScaleX > 1.21 ||
+    videoAndControls.videoScaleY < 1.19 || videoAndControls.videoScaleY > 1.21 ||
+    videoAndControls.objectFit !== "cover" || videoAndControls.pauseWidth < 30 ||
+    videoAndControls.pauseWidth > 34 || videoAndControls.pauseState !== "playing" ||
+    videoAndControls.volumeState !== "true" || !videoAndControls.pauseSvg ||
+    !videoAndControls.speakerSvg
+  ) {
+    throw new Error(`Video zoom or controls are invalid: ${JSON.stringify(videoAndControls)}`);
   }
 
   await page.screenshot({ path: screenshotPath, fullPage: true });
   await page.close();
-  return { reducedMotion, logo, entrances, copy, controls, consoleErrors };
+  return { reducedMotion, logo, entrances, copy, videoAndControls, consoleErrors };
 }
 
 try {
