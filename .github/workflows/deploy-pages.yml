@@ -122,7 +122,7 @@ jobs:
               --write-out '%{http_code}' \
               "$probe_url")"
 
-            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-build" content="20260724-5"' live-index.html; then
+            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-1"' live-index.html; then
               live_ready=true
               break
             fi
@@ -146,7 +146,9 @@ jobs:
           patterns = [
               r'href="([^"]*homepage-interactions\.css[^"]*)"',
               r'href="([^"]*static-video\.css[^"]*)"',
+              r'href="([^"]*logo-drawing\.css[^"]*)"',
               r'src="([^"]*assets/js/index\.js[^"]*)"',
+              r'src="([^"]*assets/js/logo-animation\.js[^"]*)"',
           ]
           for pattern in patterns:
               match = re.search(pattern, html)
@@ -158,12 +160,25 @@ jobs:
 
           curl --fail --silent --show-error --location "${asset_urls[0]}" --output interactions.css
           curl --fail --silent --show-error --location "${asset_urls[1]}" --output static-video.css
-          curl --fail --silent --show-error --location "${asset_urls[2]}" --output homepage.js
+          curl --fail --silent --show-error --location "${asset_urls[2]}" --output logo-drawing.css
+          curl --fail --silent --show-error --location "${asset_urls[3]}" --output homepage.js
+          curl --fail --silent --show-error --location "${asset_urls[4]}" --output logo-animation.js
 
           grep -Fq '.social-link__icon--vk' interactions.css
-          grep -Fq '@keyframes copy-pop' interactions.css
+          grep -Fq '@keyframes copy-fade' interactions.css
           grep -Fq 'object-fit: cover' static-video.css
-          grep -Fq 'scale(1.02)' static-video.css
+          grep -Fq 'scale(1.2)' static-video.css
+          ! grep -Fq 'scale(1.02)' static-video.css
+          grep -Fq 'background: transparent !important' logo-drawing.css
+          grep -Fq 'box-shadow: none' logo-drawing.css
+          grep -Fq 'filter: none' logo-drawing.css
+          grep -Fq 'path.style.fill = "none"' logo-animation.js
+          grep -Fq 'path.style.stroke = "#ffffff"' logo-animation.js
+          grep -Fq 'path.style.strokeWidth = "1.15"' logo-animation.js
+          grep -Fq 'getTotalLength' logo-animation.js
+          grep -Fq 'path.animate' logo-animation.js
+          ! grep -Fq '#1fb8b2' logo-animation.js
+          ! grep -Fq '#71e7df' logo-animation.js
           grep -Fq 'showCopyStatus' homepage.js
           grep -Fq 'DEFAULT_LOOP_START = 12' homepage.js
           grep -Fq 'handleVideoEnded' homepage.js
@@ -211,6 +226,7 @@ jobs:
           name: live-homepage-diagnostics
           path: |
             live-homepage.png
+            live-homepage-reduced-motion.png
             live-homepage-report.json
           if-no-files-found: warn
           retention-days: 7
