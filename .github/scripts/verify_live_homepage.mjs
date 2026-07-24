@@ -4,6 +4,8 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
+const expectedVideoUrl =
+  "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const url = new URL(liveUrl);
 url.searchParams.set("browser_probe", runId);
 
@@ -142,17 +144,73 @@ try {
     throw new Error(`Copy feedback is not visibly animated: ${JSON.stringify(copyState)}`);
   }
 
-  const videoState = await page.evaluate(() => ({
-    container: Boolean(document.querySelector("#hero-video")),
-    controls: Boolean(document.querySelector("#video-controls")),
-    apiScript: Array.from(document.scripts).some((script) =>
-      script.src.includes("youtube.com/iframe_api"),
-    ),
-  }));
+  await page.waitForFunction(
+    (expectedSource) => {
+      const video = document.querySelector("#hero-video-element");
+      return Boolean(
+        video &&
+          video.currentSrc === expectedSource &&
+          video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA &&
+          video.currentTime >= 11.5 &&
+          !video.paused &&
+          document.body.classList.contains("has-video"),
+      );
+    },
+    { timeout: 30_000 },
+    expectedVideoUrl,
+  );
 
-  if (!videoState.container || !videoState.controls || !videoState.apiScript) {
-    throw new Error(`YouTube background bootstrap is incomplete: ${JSON.stringify(videoState)}`);
+  const videoState = await page.evaluate((expectedSource) => {
+    const video = document.querySelector("#hero-video-element");
+    const style = video ? getComputedStyle(video) : null;
+
+    return {
+      exists: Boolean(video),
+      source: video?.currentSrc ?? "",
+      expectedSource,
+      loopStart: video?.dataset.loopStart ?? "",
+      currentTime: video?.currentTime ?? -1,
+      duration: video?.duration ?? -1,
+      readyState: video?.readyState ?? -1,
+      paused: video?.paused ?? true,
+      muted: video?.muted ?? false,
+      objectFit: style?.objectFit ?? "",
+      transform: style?.transform ?? "none",
+      controls: Boolean(document.querySelector("#video-controls")),
+      youtubeApiScript: Array.from(document.scripts).some((script) =>
+        script.src.includes("youtube.com/iframe_api"),
+      ),
+      youtubeIframe: Boolean(document.querySelector("#hero-video iframe")),
+    };
+  }, expectedVideoUrl);
+
+  if (
+    !videoState.exists ||
+    videoState.source !== expectedVideoUrl ||
+    videoState.loopStart !== "12" ||
+    videoState.currentTime < 11.5 ||
+    videoState.readyState < 2 ||
+    videoState.paused ||
+    !videoState.muted ||
+    videoState.objectFit !== "cover" ||
+    videoState.transform === "none" ||
+    !videoState.controls ||
+    videoState.youtubeApiScript ||
+    videoState.youtubeIframe
+  ) {
+    throw new Error(`Static background video is incomplete: ${JSON.stringify(videoState)}`);
   }
+
+  await page.click("#video-pause");
+  await page.waitForFunction(
+    () => document.querySelector("#hero-video-element")?.paused === true,
+    { timeout: 5_000 },
+  );
+  await page.click("#video-pause");
+  await page.waitForFunction(
+    () => document.querySelector("#hero-video-element")?.paused === false,
+    { timeout: 5_000 },
+  );
 
   await page.screenshot({
     path: "live-homepage.png",

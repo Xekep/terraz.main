@@ -1,0 +1,20 @@
+/* Local progressive MP4 background. Keeps the former YouTube crop and zoom. */
+
+.hero__video-element {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(1.02);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__video-element {
+    display: none;
+  }
+}

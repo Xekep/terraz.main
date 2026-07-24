@@ -16,8 +16,8 @@ permissions:
   pages: write
 
 concurrency:
-  group: github-pages-rebuild
-  cancel-in-progress: true
+  group: github-pages-rebuild-${{ github.event_name }}
+  cancel-in-progress: false
 
 jobs:
   rebuild:
@@ -27,6 +27,7 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       API_URL: https://api.github.com/repos/${{ github.repository }}/pages
       LIVE_URL: https://terraz.ru/
+      VIDEO_URL: https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4
       EXPECTED_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
     steps:
       - name: Request Pages rebuild
@@ -121,7 +122,7 @@ jobs:
               --write-out '%{http_code}' \
               "$probe_url")"
 
-            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-build"' live-index.html; then
+            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-build" content="20260724-5"' live-index.html; then
               live_ready=true
               break
             fi
@@ -132,50 +133,57 @@ jobs:
 
           if [[ "$live_ready" != "true" ]]; then
             echo "Live domain still serves a stale homepage" >&2
-            head -n 50 live-index.html
+            head -n 70 live-index.html
             exit 1
           fi
 
-          interactions_url="$(python3 - <<'PY'
+          readarray -t asset_urls < <(python3 - <<'PY'
           import re
           from pathlib import Path
           from urllib.parse import urljoin
-          html = Path('live-index.html').read_text(encoding='utf-8')
-          match = re.search(r'href="([^"]*homepage-interactions\.css[^"]*)"', html)
-          if not match:
-              raise SystemExit('homepage-interactions.css is not linked')
-          print(urljoin('https://terraz.ru/', match.group(1)))
-          PY
-          )"
 
-          script_url="$(python3 - <<'PY'
-          import re
-          from pathlib import Path
-          from urllib.parse import urljoin
           html = Path('live-index.html').read_text(encoding='utf-8')
-          match = re.search(r'src="([^"]*assets/js/index\.js[^"]*)"', html)
-          if not match:
-              raise SystemExit('assets/js/index.js is not linked')
-          print(urljoin('https://terraz.ru/', match.group(1)))
+          patterns = [
+              r'href="([^"]*homepage-interactions\.css[^"]*)"',
+              r'href="([^"]*static-video\.css[^"]*)"',
+              r'src="([^"]*assets/js/index\.js[^"]*)"',
+          ]
+          for pattern in patterns:
+              match = re.search(pattern, html)
+              if not match:
+                  raise SystemExit(f'Asset is not linked: {pattern}')
+              print(urljoin('https://terraz.ru/', match.group(1)))
           PY
-          )"
+          )
 
-          curl --fail --silent --show-error --location "$interactions_url" --output interactions.css
-          curl --fail --silent --show-error --location "$script_url" --output homepage.js
+          curl --fail --silent --show-error --location "${asset_urls[0]}" --output interactions.css
+          curl --fail --silent --show-error --location "${asset_urls[1]}" --output static-video.css
+          curl --fail --silent --show-error --location "${asset_urls[2]}" --output homepage.js
 
           grep -Fq '.social-link__icon--vk' interactions.css
           grep -Fq '@keyframes copy-pop' interactions.css
+          grep -Fq 'object-fit: cover' static-video.css
+          grep -Fq 'scale(1.02)' static-video.css
           grep -Fq 'showCopyStatus' homepage.js
-          grep -Fq 'YT.Player' homepage.js
+          grep -Fq 'DEFAULT_LOOP_START = 12' homepage.js
+          grep -Fq 'handleVideoEnded' homepage.js
+          ! grep -Fq 'YT.Player' homepage.js
+          ! grep -Fq 'iframe_api' homepage.js
+          grep -Fq "$VIDEO_URL" live-index.html
 
-          for icon in vk youtube discord telegram twitch; do
-            curl --fail --silent --show-error --location \
-              "https://terraz.ru/assets/images/${icon}.png?pages_probe=${GITHUB_RUN_ID}" \
-              --output "${icon}.png"
-            test -s "${icon}.png"
-          done
+          range_status="$(curl --silent --show-error --location \
+            --range 0-1023 \
+            --dump-header video-range.txt \
+            --output video-range.bin \
+            --write-out '%{http_code}' \
+            "$VIDEO_URL")"
+          test "$range_status" = "206"
+          grep -Eqi '^content-type: *video/mp4' video-range.txt
+          grep -Eqi '^accept-ranges: *bytes' video-range.txt
+          grep -Eqi '^content-range: *bytes 0-1023/' video-range.txt
+          test "$(wc -c < video-range.bin)" -eq 1024
 
-          echo 'Live homepage resources are available.'
+          echo 'Live homepage resources and progressive MP4 endpoint are available.'
 
       - name: Check out browser verification
         uses: actions/checkout@v5
@@ -191,7 +199,7 @@ jobs:
           echo "CHROME_PATH=${chrome_path}" >> "$GITHUB_ENV"
           npm install --no-save --package-lock=false puppeteer-core@24.15.0
 
-      - name: Verify rendered icons and copy animation in Chrome
+      - name: Verify rendered homepage and static video in Chrome
         env:
           LIVE_URL: https://terraz.ru/
         run: node .github/scripts/verify_live_homepage.mjs

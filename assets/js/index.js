@@ -1,14 +1,14 @@
 (function () {
   "use strict";
 
-  var VIDEO_ID = "T3K2Fc4t93Y";
+  var DEFAULT_LOOP_START = 12;
   var REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
   var copyResetTimer = null;
-  var player = null;
-  var playerReady = false;
-  var videoPaused = false;
+  var videoElement = null;
+  var videoReady = false;
   var videoMuted = true;
-  var apiTimeout = null;
+  var userPaused = false;
+  var pausedByVisibility = false;
 
   function matchesMedia(query) {
     return typeof window.matchMedia === "function" && window.matchMedia(query).matches;
@@ -17,6 +17,33 @@
   function shouldLoadVideo() {
     var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
     return !matchesMedia(REDUCED_MOTION_QUERY) && !(connection && connection.saveData);
+  }
+
+  function getLoopStart() {
+    if (!videoElement) {
+      return DEFAULT_LOOP_START;
+    }
+
+    var configuredStart = Number(videoElement.dataset.loopStart);
+    var requestedStart = Number.isFinite(configuredStart) ? configuredStart : DEFAULT_LOOP_START;
+
+    if (Number.isFinite(videoElement.duration) && videoElement.duration > 0) {
+      return Math.min(Math.max(requestedStart, 0), Math.max(videoElement.duration - 0.25, 0));
+    }
+
+    return Math.max(requestedStart, 0);
+  }
+
+  function seekToLoopStart() {
+    if (!videoElement || videoElement.readyState < 1) {
+      return;
+    }
+
+    try {
+      videoElement.currentTime = getLoopStart();
+    } catch (error) {
+      console.error("Не удалось установить старт фонового видео", error);
+    }
   }
 
   function setPauseButtonState(paused) {
@@ -46,122 +73,98 @@
   }
 
   function markVideoReady() {
+    videoReady = true;
     document.body.classList.add("video-ready");
-    window.clearTimeout(apiTimeout);
   }
 
-  function handlePlayerReady(event) {
-    playerReady = true;
-    markVideoReady();
-
-    var frame = event.target.getIframe();
-    if (frame) {
-      frame.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
-      frame.setAttribute("aria-hidden", "true");
-      frame.tabIndex = -1;
-      frame.title = "Фоновое видео TerraZ";
-    }
-
-    event.target.mute();
-    event.target.seekTo(12, true);
-    event.target.playVideo();
-    videoMuted = true;
-    videoPaused = false;
-    setVolumeButtonState(videoMuted);
-    setPauseButtonState(videoPaused);
-  }
-
-  function handlePlayerStateChange(event) {
-    if (!window.YT || !window.YT.PlayerState) {
-      return;
-    }
-
-    if (event.data === window.YT.PlayerState.PLAYING) {
-      document.body.classList.add("has-video");
-      videoPaused = false;
-      setPauseButtonState(false);
-      return;
-    }
-
-    if (event.data === window.YT.PlayerState.PAUSED) {
-      videoPaused = true;
-      setPauseButtonState(true);
-      return;
-    }
-
-    if (event.data === window.YT.PlayerState.ENDED) {
-      event.target.seekTo(12, true);
-      event.target.playVideo();
-    }
-  }
-
-  function handleAutoplayBlocked() {
-    markVideoReady();
-    videoPaused = true;
-    setPauseButtonState(true);
-  }
-
-  function handlePlayerError() {
+  function handleVideoError(error) {
     document.body.classList.remove("has-video", "video-ready");
     document.body.classList.add("video-error");
+
+    if (error) {
+      console.error("Не удалось загрузить фоновое видео", error);
+    }
   }
 
-  function createYouTubePlayer() {
-    var container = document.getElementById("hero-video");
-    if (!container || !window.YT || typeof window.YT.Player !== "function") {
+  function handleAutoplayBlocked(error) {
+    markVideoReady();
+    userPaused = true;
+    setPauseButtonState(true);
+
+    if (error && error.name !== "NotAllowedError" && error.name !== "AbortError") {
+      handleVideoError(error);
+    }
+  }
+
+  function playBackgroundVideo() {
+    if (!videoElement) {
       return;
     }
 
-    player = new window.YT.Player(container, {
-      videoId: VIDEO_ID,
-      host: "https://www.youtube-nocookie.com",
-      playerVars: {
-        autoplay: 1,
-        controls: 0,
-        disablekb: 1,
-        fs: 0,
-        iv_load_policy: 3,
-        loop: 1,
-        modestbranding: 1,
-        mute: 1,
-        origin: window.location.origin,
-        playlist: VIDEO_ID,
-        playsinline: 1,
-        rel: 0,
-        start: 12
-      },
-      events: {
-        onReady: handlePlayerReady,
-        onStateChange: handlePlayerStateChange,
-        onAutoplayBlocked: handleAutoplayBlocked,
-        onError: handlePlayerError
+    var playback = videoElement.play();
+    if (playback && typeof playback.catch === "function") {
+      playback.catch(handleAutoplayBlocked);
+    }
+  }
+
+  function handleLoadedMetadata() {
+    seekToLoopStart();
+    markVideoReady();
+
+    if (!userPaused && !document.hidden) {
+      playBackgroundVideo();
+    }
+  }
+
+  function handleVideoPlaying() {
+    markVideoReady();
+    document.body.classList.remove("video-error");
+    document.body.classList.add("has-video");
+    setPauseButtonState(false);
+  }
+
+  function handleVideoEnded() {
+    seekToLoopStart();
+
+    if (!userPaused && !document.hidden) {
+      playBackgroundVideo();
+    }
+  }
+
+  function setupStaticVideo() {
+    videoElement = document.getElementById("hero-video-element");
+    if (!videoElement || !shouldLoadVideo()) {
+      if (videoElement) {
+        videoElement.preload = "none";
       }
+      return;
+    }
+
+    videoElement.defaultMuted = true;
+    videoElement.muted = true;
+    videoElement.volume = 1;
+    videoMuted = true;
+
+    videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
+    videoElement.addEventListener("canplay", markVideoReady);
+    videoElement.addEventListener("playing", handleVideoPlaying);
+    videoElement.addEventListener("pause", function () {
+      setPauseButtonState(true);
     });
-  }
+    videoElement.addEventListener("ended", handleVideoEnded);
+    videoElement.addEventListener("error", function () {
+      handleVideoError(videoElement.error);
+    });
 
-  function loadYouTubeApi() {
-    if (!shouldLoadVideo()) {
-      return;
+    setVolumeButtonState(true);
+    setPauseButtonState(false);
+
+    if (videoElement.readyState >= 1) {
+      handleLoadedMetadata();
+    } else {
+      videoElement.preload = "auto";
+      videoElement.load();
     }
-
-    if (window.YT && typeof window.YT.Player === "function") {
-      createYouTubePlayer();
-      return;
-    }
-
-    window.onYouTubeIframeAPIReady = createYouTubePlayer;
-
-    var script = document.createElement("script");
-    script.src = "https://www.youtube.com/iframe_api";
-    script.async = true;
-    script.onerror = handlePlayerError;
-    document.head.appendChild(script);
-
-    apiTimeout = window.setTimeout(function () {
-      if (!playerReady) {
-        handlePlayerError();
-      }
-    }, 12000);
   }
 
   function fallbackCopy(text) {
@@ -250,48 +253,52 @@
     }
 
     pauseButton.addEventListener("click", function () {
-      if (!playerReady || !player) {
+      if (!videoElement || !videoReady) {
         return;
       }
 
-      if (videoPaused) {
-        player.playVideo();
+      if (videoElement.paused) {
+        userPaused = false;
+        pausedByVisibility = false;
+        playBackgroundVideo();
       } else {
-        player.pauseVideo();
+        userPaused = true;
+        videoElement.pause();
       }
     });
 
     volumeButton.addEventListener("click", function () {
-      if (!playerReady || !player) {
+      if (!videoElement || !videoReady) {
         return;
       }
 
       videoMuted = !videoMuted;
-      if (videoMuted) {
-        player.mute();
-      } else {
-        player.unMute();
-      }
+      videoElement.muted = videoMuted;
       setVolumeButtonState(videoMuted);
     });
 
     document.addEventListener("visibilitychange", function () {
-      if (!playerReady || !player) {
+      if (!videoElement || !videoReady) {
         return;
       }
 
-      if (document.hidden) {
-        player.pauseVideo();
-      } else if (!videoPaused) {
-        player.playVideo();
+      if (document.hidden && !videoElement.paused) {
+        pausedByVisibility = true;
+        videoElement.pause();
+        return;
+      }
+
+      if (!document.hidden && pausedByVisibility && !userPaused) {
+        pausedByVisibility = false;
+        playBackgroundVideo();
       }
     });
   }
 
   function initialize() {
     setupClipboard();
+    setupStaticVideo();
     setupVideoControls();
-    loadYouTubeApi();
   }
 
   if (document.readyState === "loading") {
