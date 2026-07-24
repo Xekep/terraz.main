@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[2]
 INDEX = ROOT / "index.html"
 EFFECTS_CSS = ROOT / "assets/css/homepage-interactions.css"
 VIDEO_CSS = ROOT / "assets/css/static-video.css"
+MOTION_CSS = ROOT / "assets/css/motion-preferences.css"
 JS = ROOT / "assets/js/index.js"
 
 
@@ -55,6 +56,7 @@ def main() -> None:
     html = INDEX.read_text(encoding="utf-8")
     css = EFFECTS_CSS.read_text(encoding="utf-8")
     video_css = VIDEO_CSS.read_text(encoding="utf-8")
+    motion_css = MOTION_CSS.read_text(encoding="utf-8")
     js = JS.read_text(encoding="utf-8")
 
     parser = HomepageParser()
@@ -77,6 +79,7 @@ def main() -> None:
     require("@keyframes copy-pop" in css and ".copy-status.is-visible" in css, "Copy animation is missing")
 
     require(parser.video_attributes.get("data-loop-start") == "12", "Background video must start at 12 seconds")
+    require("autoplay" in parser.video_attributes, "Background video autoplay attribute is missing")
     require("muted" in parser.video_attributes, "Background video must start muted")
     require("playsinline" in parser.video_attributes, "Background video must play inline on mobile")
     require(len(parser.video_sources) == 1, "Background video must have exactly one source")
@@ -90,7 +93,15 @@ def main() -> None:
     require("DEFAULT_LOOP_START = 12" in js, "Static video loop start is missing")
     require("handleVideoEnded" in js and "seekToLoopStart" in js, "Static video loop handling is missing")
     require("hero-video-element" in js, "Static video element is not initialized")
+    require("prefers-reduced-motion" not in js, "System animation settings must not disable video loading")
     require("YT.Player" not in js and "iframe_api" not in js, "YouTube player code must not return")
+
+    require("motion-preferences.css?v=20260724-6" in html, "Reduced-motion compatibility stylesheet is not linked")
+    require(".hero__video-element" in motion_css, "Reduced-motion video override is missing")
+    require("display: block !important" in motion_css, "Reduced-motion mode must keep the video visible")
+    require(".copy-status.is-visible" in motion_css, "Reduced-motion copy feedback override is missing")
+    require("opacity: 1 !important" in motion_css, "Reduced-motion copy feedback must remain visible")
+    require("animation: none !important" in motion_css, "Reduced-motion copy feedback must not animate")
     require("body.video-ready .video-controls" in css, "Manual video start controls are missing")
     require("display: block !important" in css, "Touch viewport video override is missing")
 

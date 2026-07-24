@@ -4,10 +4,9 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
+const expectedAssetsVersion = "20260724-6";
 const expectedVideoUrl =
   "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
-const url = new URL(liveUrl);
-url.searchParams.set("browser_probe", runId);
 
 const browser = await puppeteer.launch({
   executablePath: chromePath,
@@ -20,30 +19,44 @@ const browser = await puppeteer.launch({
   ],
 });
 
-try {
-  const context = browser.defaultBrowserContext();
-  await context.overridePermissions(url.origin, ["clipboard-read", "clipboard-write"]);
+const delay = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 
-  const page = await browser.newPage();
-  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+async function openCurrentHomepage(page, probeName) {
+  for (let attempt = 1; attempt <= 30; attempt += 1) {
+    const url = new URL(liveUrl);
+    url.searchParams.set("browser_probe", `${runId}-${probeName}-${attempt}`);
 
-  const consoleErrors = [];
-  page.on("console", (message) => {
-    if (message.type() === "error") {
-      consoleErrors.push(message.text());
+    const response = await page.goto(url.href, {
+      waitUntil: "domcontentloaded",
+      timeout: 30_000,
+    });
+
+    const assetsVersion = await page
+      .$eval('meta[name="terraz-assets"]', (element) => element.getAttribute("content"))
+      .catch(() => null);
+
+    if (response?.ok() && assetsVersion === expectedAssetsVersion) {
+      return url.href;
     }
-  });
-  page.on("pageerror", (error) => consoleErrors.push(error.message));
 
-  const response = await page.goto(url.href, {
-    waitUntil: "domcontentloaded",
-    timeout: 30_000,
-  });
-
-  if (!response || !response.ok()) {
-    throw new Error(`Live homepage returned HTTP ${response?.status() ?? "unknown"}`);
+    await delay(2_000);
   }
 
+  throw new Error(`Live homepage did not publish assets ${expectedAssetsVersion}`);
+}
+
+function collectConsoleErrors(page) {
+  const errors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") {
+      errors.push(message.text());
+    }
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+  return errors;
+}
+
+async function verifySocialIcons(page) {
   await page.waitForSelector(".social-links .social-link", {
     visible: true,
     timeout: 15_000,
@@ -98,6 +111,10 @@ try {
     }
   }
 
+  return socialState;
+}
+
+async function clickAndReadCopyFeedback(page) {
   await page.click("#server-copy");
   await page.waitForFunction(
     () => {
@@ -117,7 +134,7 @@ try {
     { timeout: 5_000 },
   );
 
-  const copyState = await page.evaluate(() => {
+  return page.evaluate(() => {
     const button = document.querySelector("#server-copy");
     const status = document.querySelector("#copy-status");
     const icon = button?.querySelector(".server-copy__icon");
@@ -129,21 +146,14 @@ try {
       text: status?.textContent?.trim() ?? "",
       opacity: Number(style?.opacity ?? 0),
       animationName: style?.animationName ?? "none",
+      animationDuration: style?.animationDuration ?? "",
+      transform: style?.transform ?? "none",
       copyIcon: icon?.textContent?.trim() ?? "",
     };
   });
+}
 
-  if (
-    !copyState.copiedClass ||
-    !copyState.statusVisibleClass ||
-    copyState.text !== "Скопировано" ||
-    copyState.opacity <= 0.5 ||
-    copyState.animationName === "none" ||
-    copyState.copyIcon !== "✓"
-  ) {
-    throw new Error(`Copy feedback is not visibly animated: ${JSON.stringify(copyState)}`);
-  }
-
+async function waitForVideoPlayback(page) {
   await page.waitForFunction(
     (expectedSource) => {
       const video = document.querySelector("#hero-video-element");
@@ -160,9 +170,13 @@ try {
     expectedVideoUrl,
   );
 
-  const videoState = await page.evaluate((expectedSource) => {
+  return page.evaluate((expectedSource) => {
     const video = document.querySelector("#hero-video-element");
-    const style = video ? getComputedStyle(video) : null;
+    const videoStyle = video ? getComputedStyle(video) : null;
+    const container = document.querySelector("#hero-video");
+    const containerStyle = container ? getComputedStyle(container) : null;
+    const controls = document.querySelector("#video-controls");
+    const controlsStyle = controls ? getComputedStyle(controls) : null;
 
     return {
       exists: Boolean(video),
@@ -174,16 +188,20 @@ try {
       readyState: video?.readyState ?? -1,
       paused: video?.paused ?? true,
       muted: video?.muted ?? false,
-      objectFit: style?.objectFit ?? "",
-      transform: style?.transform ?? "none",
-      controls: Boolean(document.querySelector("#video-controls")),
+      videoDisplay: videoStyle?.display ?? "none",
+      containerDisplay: containerStyle?.display ?? "none",
+      controlsDisplay: controlsStyle?.display ?? "none",
+      objectFit: videoStyle?.objectFit ?? "",
+      transform: videoStyle?.transform ?? "none",
       youtubeApiScript: Array.from(document.scripts).some((script) =>
         script.src.includes("youtube.com/iframe_api"),
       ),
       youtubeIframe: Boolean(document.querySelector("#hero-video iframe")),
     };
   }, expectedVideoUrl);
+}
 
+function assertVideoState(videoState, mode) {
   if (
     !videoState.exists ||
     videoState.source !== expectedVideoUrl ||
@@ -192,14 +210,36 @@ try {
     videoState.readyState < 2 ||
     videoState.paused ||
     !videoState.muted ||
+    videoState.videoDisplay === "none" ||
+    videoState.containerDisplay === "none" ||
+    videoState.controlsDisplay === "none" ||
     videoState.objectFit !== "cover" ||
     videoState.transform === "none" ||
-    !videoState.controls ||
     videoState.youtubeApiScript ||
     videoState.youtubeIframe
   ) {
-    throw new Error(`Static background video is incomplete: ${JSON.stringify(videoState)}`);
+    throw new Error(`${mode} static background video is incomplete: ${JSON.stringify(videoState)}`);
   }
+}
+
+try {
+  const context = browser.defaultBrowserContext();
+  await context.overridePermissions(new URL(liveUrl).origin, ["clipboard-read", "clipboard-write"]);
+
+  const page = await browser.newPage();
+  await page.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  const consoleErrors = collectConsoleErrors(page);
+  await openCurrentHomepage(page, "desktop");
+
+  const socialState = await verifySocialIcons(page);
+  const copyState = await clickAndReadCopyFeedback(page);
+
+  if (copyState.animationName === "none") {
+    throw new Error(`Desktop copy feedback should animate: ${JSON.stringify(copyState)}`);
+  }
+
+  const videoState = await waitForVideoPlayback(page);
+  assertVideoState(videoState, "Desktop");
 
   await page.click("#video-pause");
   await page.waitForFunction(
@@ -217,12 +257,62 @@ try {
     fullPage: true,
   });
 
-  fs.writeFileSync(
-    "live-homepage-report.json",
-    JSON.stringify({ socialState, copyState, videoState, consoleErrors }, null, 2),
-  );
+  const reducedPage = await browser.newPage();
+  await reducedPage.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+  await reducedPage.emulateMediaFeatures([
+    { name: "prefers-reduced-motion", value: "reduce" },
+  ]);
+  const reducedConsoleErrors = collectConsoleErrors(reducedPage);
+  await openCurrentHomepage(reducedPage, "reduced-motion");
 
-  console.log(JSON.stringify({ socialState, copyState, videoState, consoleErrors }, null, 2));
+  const reducedVideoState = await waitForVideoPlayback(reducedPage);
+  assertVideoState(reducedVideoState, "Reduced-motion desktop");
+
+  const reducedCopyState = await clickAndReadCopyFeedback(reducedPage);
+  await delay(300);
+  const reducedCopyAfterDelay = await reducedPage.evaluate(() => {
+    const status = document.querySelector("#copy-status");
+    const style = status ? getComputedStyle(status) : null;
+    return {
+      visibleClass: status?.classList.contains("is-visible") ?? false,
+      opacity: Number(style?.opacity ?? 0),
+      animationName: style?.animationName ?? "none",
+      text: status?.textContent?.trim() ?? "",
+    };
+  });
+
+  if (
+    reducedCopyState.animationName !== "none" ||
+    !reducedCopyAfterDelay.visibleClass ||
+    reducedCopyAfterDelay.opacity <= 0.5 ||
+    reducedCopyAfterDelay.animationName !== "none" ||
+    reducedCopyAfterDelay.text !== "Скопировано"
+  ) {
+    throw new Error(
+      `Reduced-motion copy feedback is not persistently visible: ${JSON.stringify({ reducedCopyState, reducedCopyAfterDelay })}`,
+    );
+  }
+
+  await reducedPage.screenshot({
+    path: "live-homepage-reduced-motion.png",
+    fullPage: true,
+  });
+
+  const report = {
+    socialState,
+    copyState,
+    videoState,
+    consoleErrors,
+    reducedMotion: {
+      copyState: reducedCopyState,
+      copyAfterDelay: reducedCopyAfterDelay,
+      videoState: reducedVideoState,
+      consoleErrors: reducedConsoleErrors,
+    },
+  };
+
+  fs.writeFileSync("live-homepage-report.json", JSON.stringify(report, null, 2));
+  console.log(JSON.stringify(report, null, 2));
 } finally {
   await browser.close();
 }
