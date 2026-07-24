@@ -97,11 +97,15 @@ async function verifyMode(mode, reducedMotion, screenshotPath) {
 
   await page.click("#server-copy");
   await page.waitForFunction(() => document.querySelector("#copy-status")?.classList.contains("is-visible"), { timeout: 5_000 });
+  await page.waitForFunction(() => {
+    const status = document.querySelector("#copy-status");
+    return status && Number(getComputedStyle(status).opacity) > 0.1;
+  }, { timeout: 2_000 });
   const copy = await page.$eval("#copy-status", (node) => {
     const style = getComputedStyle(node);
     return { text: node.textContent.trim(), animationName: style.animationName, duration: style.animationDuration, opacity: Number(style.opacity) };
   });
-  if (copy.text !== "Скопировано" || copy.animationName !== "copy-fade" || Number.parseFloat(copy.duration) < 1.5 || copy.opacity <= 0) {
+  if (copy.text !== "Скопировано" || copy.animationName !== "copy-fade" || Number.parseFloat(copy.duration) < 1.5 || copy.opacity <= 0.1) {
     throw new Error(`Copy animation is invalid: ${JSON.stringify(copy)}`);
   }
 
