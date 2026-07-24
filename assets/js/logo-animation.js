@@ -19,32 +19,55 @@
       }
 
       var length = typeof path.getTotalLength === "function" ? path.getTotalLength() : 3000;
-      path.style.setProperty("--logo-path-length", String(length));
 
-      var style = logoDocument.createElementNS("http://www.w3.org/2000/svg", "style");
-      style.textContent = [
-        ".title-letter {",
-        "  fill: rgba(31, 184, 178, .12) !important;",
-        "  stroke: #efffff !important;",
-        "  stroke-linecap: round;",
-        "  stroke-linejoin: round;",
-        "  stroke-dasharray: var(--logo-path-length) !important;",
-        "  stroke-dashoffset: var(--logo-path-length) !important;",
-        "  animation: terraz-logo-write 3.8s cubic-bezier(.4, 0, .2, 1) .18s forwards !important;",
-        "}",
-        "@keyframes terraz-logo-write {",
-        "  0% { fill-opacity: 0; stroke: #1fb8b2; stroke-dashoffset: var(--logo-path-length); }",
-        "  58% { fill-opacity: .03; stroke: #71e7df; }",
-        "  88% { fill-opacity: .08; }",
-        "  100% { fill-opacity: .12; stroke: #efffff; stroke-dashoffset: 0; }",
-        "}",
-      ].join("\n");
-      logoDocument.documentElement.appendChild(style);
+      path.getAnimations().forEach(function (animation) {
+        animation.cancel();
+      });
 
       path.style.animation = "none";
-      path.getBoundingClientRect();
-      path.style.animation = "";
+      path.style.fill = "rgba(31, 184, 178, .12)";
+      path.style.fillOpacity = "0";
+      path.style.stroke = "#1fb8b2";
+      path.style.strokeLinecap = "round";
+      path.style.strokeLinejoin = "round";
+      path.style.strokeDasharray = String(length);
+      path.style.strokeDashoffset = String(length);
+
+      var drawing = path.animate([
+        {
+          offset: 0,
+          fillOpacity: 0,
+          stroke: "#1fb8b2",
+          strokeDashoffset: length,
+        },
+        {
+          offset: 0.58,
+          fillOpacity: 0.03,
+          stroke: "#71e7df",
+          strokeDashoffset: length * 0.31,
+        },
+        {
+          offset: 0.88,
+          fillOpacity: 0.08,
+          stroke: "#d9ffff",
+          strokeDashoffset: length * 0.045,
+        },
+        {
+          offset: 1,
+          fillOpacity: 0.12,
+          stroke: "#efffff",
+          strokeDashoffset: 0,
+        },
+      ], {
+        duration: 3800,
+        delay: 180,
+        easing: "cubic-bezier(.4, 0, .2, 1)",
+        fill: "forwards",
+      });
+
+      drawing.id = "terraz-logo-write";
       logoObject.dataset.drawingReady = "true";
+      logoObject.dataset.pathLength = String(length);
     }
 
     logoObject.addEventListener("load", activateDrawing, { once: true });
