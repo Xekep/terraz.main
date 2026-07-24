@@ -17,6 +17,7 @@ jobs:
       - name: Check JavaScript syntax
         run: |
           node --check assets/js/index.js
+          node --check assets/js/mgGlitch.min.js
           node --check assets/js/redirect.js
           node --check assets/js/error.js
 
