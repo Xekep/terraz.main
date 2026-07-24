@@ -2,13 +2,10 @@ name: Rebuild and verify Pages site
 
 on:
   push:
-    branches:
-      - gh-pages
+    branches: [gh-pages]
   pull_request:
-    branches:
-      - gh-pages
-    types:
-      - closed
+    branches: [gh-pages]
+    types: [closed]
   workflow_dispatch:
 
 permissions:
@@ -29,216 +26,92 @@ jobs:
       LIVE_URL: https://terraz.ru/
       VIDEO_URL: https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4
       EXPECTED_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+      EXPECTED_ASSETS: 20260725-5
     steps:
       - name: Request Pages rebuild
         shell: bash
         run: |
-          set -u
-
-          api_request() {
-            local method="$1"
-            local url="$2"
-            local output="$3"
-            curl --silent --show-error \
-              --request "$method" \
-              --header "Accept: application/vnd.github+json" \
-              --header "Authorization: Bearer ${GH_TOKEN}" \
-              --header "X-GitHub-Api-Version: 2022-11-28" \
-              --output "$output" \
-              --write-out "%{http_code}" \
-              "$url"
-          }
-
-          config_status="$(api_request GET "${API_URL}" pages-config.json)"
-          build_status="$(api_request POST "${API_URL}/builds" pages-build.json)"
-
-          echo "Pages config HTTP: ${config_status}"
-          cat pages-config.json
-          echo
-          echo "Pages rebuild HTTP: ${build_status}"
+          set -euo pipefail
+          status="$(curl --silent --show-error --request POST \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --output pages-build.json --write-out '%{http_code}' "${API_URL}/builds")"
           cat pages-build.json
-          echo
+          test "$status" = "201"
 
-          if [[ "$config_status" != "200" || "$build_status" != "201" ]]; then
-            exit 1
-          fi
-
-      - name: Wait for requested Pages build
+      - name: Wait for Pages build and public version
         shell: bash
         run: |
-          set -u
-
-          api_get() {
-            local url="$1"
-            local output="$2"
-            curl --silent --show-error \
-              --header "Accept: application/vnd.github+json" \
-              --header "Authorization: Bearer ${GH_TOKEN}" \
-              --header "X-GitHub-Api-Version: 2022-11-28" \
-              --output "$output" \
-              --write-out "%{http_code}" \
-              "$url"
-          }
-
-          build_ready=false
+          set -euo pipefail
+          built=false
           for attempt in $(seq 1 60); do
             sleep 2
-            http_status="$(api_get "${API_URL}/builds/latest" pages-latest.json)"
-            build_state="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("status", ""))')"
-            build_commit="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("commit", ""))')"
-            echo "attempt=${attempt} HTTP=${http_status} status=${build_state} commit=${build_commit} expected=${EXPECTED_COMMIT}"
-
-            if [[ "$http_status" == "200" && "$build_state" == "built" && "$build_commit" == "$EXPECTED_COMMIT" ]]; then
-              build_ready=true
+            curl --fail --silent --show-error \
+              --header 'Accept: application/vnd.github+json' \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header 'X-GitHub-Api-Version: 2022-11-28' \
+              "${API_URL}/builds/latest" --output pages-latest.json
+            state="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("status", ""))')"
+            commit="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("commit", ""))')"
+            echo "attempt=${attempt} status=${state} commit=${commit} expected=${EXPECTED_COMMIT}"
+            if [[ "$state" == "built" && "$commit" == "$EXPECTED_COMMIT" ]]; then
+              built=true
               break
             fi
-
-            if [[ "$build_state" == "errored" ]]; then
-              cat pages-latest.json
-              exit 1
-            fi
+            [[ "$state" != "errored" ]]
           done
+          test "$built" = "true"
 
-          cat pages-latest.json
-          echo
-
-          if [[ "$build_ready" != "true" ]]; then
-            echo "The expected Pages build did not finish" >&2
-            exit 1
-          fi
-
-      - name: Verify live homepage resources
-        shell: bash
-        run: |
-          set -u
-
-          live_ready=false
+          live=false
           for attempt in $(seq 1 30); do
-            probe_url="${LIVE_URL}?pages_probe=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}"
-            live_status="$(curl --silent --show-error --location \
-              --header 'Cache-Control: no-cache' \
-              --header 'Pragma: no-cache' \
-              --output live-index.html \
-              --write-out '%{http_code}' \
-              "$probe_url")"
-
-            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-assets" content="20260725-4"' live-index.html; then
-              live_ready=true
+            status="$(curl --silent --show-error --location \
+              --header 'Cache-Control: no-cache' --header 'Pragma: no-cache' \
+              --output live-index.html --write-out '%{http_code}' \
+              "${LIVE_URL}?pages_probe=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}")"
+            if [[ "$status" == "200" ]] && grep -q "name=\"terraz-assets\" content=\"${EXPECTED_ASSETS}\"" live-index.html; then
+              live=true
               break
             fi
-
-            echo "Live site is not updated yet: attempt=${attempt} HTTP=${live_status}"
             sleep 2
           done
+          test "$live" = "true"
 
-          if [[ "$live_ready" != "true" ]]; then
-            echo "Live domain still serves a stale homepage" >&2
-            head -n 70 live-index.html
-            exit 1
-          fi
+      - name: Check out repository
+        uses: actions/checkout@v5
 
-          readarray -t asset_urls < <(python3 - <<'PY'
-          import re
-          from pathlib import Path
-          from urllib.parse import urljoin
-
-          html = Path('live-index.html').read_text(encoding='utf-8')
-          patterns = [
-              r'href="([^"]*homepage-interactions\.css[^"]*)"',
-              r'href="([^"]*static-video\.css[^"]*)"',
-              r'href="([^"]*logo-drawing\.css[^"]*)"',
-              r'src="([^"]*assets/js/index\.js[^"]*)"',
-              r'src="([^"]*assets/js/logo-animation\.js[^"]*)"',
-              r'data-logo-src="([^"]*terraz-logo\.svg[^"]*)"',
-          ]
-          for pattern in patterns:
-              match = re.search(pattern, html)
-              if not match:
-                  raise SystemExit(f'Asset is not linked: {pattern}')
-              print(urljoin('https://terraz.ru/', match.group(1)))
-          PY
-          )
-
-          curl --fail --silent --show-error --location "${asset_urls[0]}" --output interactions.css
-          curl --fail --silent --show-error --location "${asset_urls[1]}" --output static-video.css
-          curl --fail --silent --show-error --location "${asset_urls[2]}" --output logo-drawing.css
-          curl --fail --silent --show-error --location "${asset_urls[3]}" --output homepage.js
-          curl --fail --silent --show-error --location "${asset_urls[4]}" --output logo-animation.js
-          curl --fail --silent --show-error --location "${asset_urls[5]}" --output terraz-logo.svg
-
-          grep -Fq '.social-link__icon--vk' interactions.css
-          grep -Fq '@keyframes copy-fade' interactions.css
-          grep -Fq 'object-fit: cover' static-video.css
-          grep -Fq 'scale(1.2)' static-video.css
-          ! grep -Fq 'scale(1.02)' static-video.css
-          grep -Fq 'background: transparent !important' logo-drawing.css
-          grep -Fq '.hero__logo-svg' logo-drawing.css
-          grep -Fq 'box-shadow: none' logo-drawing.css
-          grep -Fq 'filter: none' logo-drawing.css
-          test "$(grep -o 'class="logo-stroke"' terraz-logo.svg | wc -l)" -eq 7
-          ! grep -Fq 'title-letter' terraz-logo.svg
-          for order in 0 1 2 3 4 5 6; do
-            grep -Fq "data-order=\"${order}\"" terraz-logo.svg
-          done
-          grep -Fq 'fetch(source' logo-animation.js
-          grep -Fq 'DOMParser' logo-animation.js
-          grep -Fq 'replaceChildren' logo-animation.js
-          grep -Fq 'querySelectorAll(".logo-stroke")' logo-animation.js
-          grep -Fq 'path.style.transitionProperty = "none"' logo-animation.js
-          grep -Fq 'path.style.fill = "none"' logo-animation.js
-          grep -Fq 'path.style.stroke = "#ffffff"' logo-animation.js
-          grep -Fq 'path.style.strokeWidth = "1.15"' logo-animation.js
-          grep -Fq 'getTotalLength' logo-animation.js
-          grep -Fq 'path.animate' logo-animation.js
-          grep -Fq 'direction: "normal"' logo-animation.js
-          grep -Fq 'iterations: 1' logo-animation.js
-          grep -Fq 'nextDelay += duration + STROKE_GAP' logo-animation.js
-          ! grep -Eq 'alternate|reverse' logo-animation.js
-          ! grep -Fq '#1fb8b2' logo-animation.js
-          ! grep -Fq '#71e7df' logo-animation.js
-          ! grep -Fq '<object' live-index.html
-          grep -Fq 'id="hero-logo"' live-index.html
-          grep -Fq 'showCopyStatus' homepage.js
-          grep -Fq 'DEFAULT_LOOP_START = 12' homepage.js
-          grep -Fq 'handleVideoEnded' homepage.js
-          ! grep -Fq 'YT.Player' homepage.js
-          ! grep -Fq 'iframe_api' homepage.js
-          grep -Fq "$VIDEO_URL" live-index.html
-
-          range_status="$(curl --silent --show-error --location \
-            --range 0-1023 \
-            --dump-header video-range.txt \
-            --output video-range.bin \
-            --write-out '%{http_code}' \
-            "$VIDEO_URL")"
-          test "$range_status" = "206"
+      - name: Validate source and progressive video
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check assets/js/index.js
+          node --check assets/js/logo-animation.js
+          node --check .github/scripts/verify_live_homepage_v2.mjs
+          python3 -m py_compile .github/scripts/validate_site.py .github/scripts/validate_homepage.py
+          python3 .github/scripts/validate_site.py
+          python3 .github/scripts/validate_homepage.py
+          status="$(curl --silent --show-error --location --range 0-1023 \
+            --dump-header video-range.txt --output video-range.bin \
+            --write-out '%{http_code}' "$VIDEO_URL")"
+          test "$status" = "206"
           grep -Eqi '^content-type: *video/mp4' video-range.txt
-          grep -Eqi '^accept-ranges: *bytes' video-range.txt
           grep -Eqi '^content-range: *bytes 0-1023/' video-range.txt
           test "$(wc -c < video-range.bin)" -eq 1024
 
-          echo 'Live homepage, single-pass logo and progressive MP4 endpoint are available.'
-
-      - name: Check out browser verification
-        uses: actions/checkout@v5
-
-      - name: Prepare Chrome browser test
+      - name: Prepare Chrome
         shell: bash
         run: |
           chrome_path="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
-          if [[ -z "$chrome_path" ]]; then
-            echo 'Chrome or Chromium is unavailable on the runner' >&2
-            exit 1
-          fi
+          test -n "$chrome_path"
           echo "CHROME_PATH=${chrome_path}" >> "$GITHUB_ENV"
           npm install --no-save --package-lock=false puppeteer-core@24.15.0
 
-      - name: Verify rendered homepage and static video in Chrome
+      - name: Verify desktop and mobile rendering
         env:
           LIVE_URL: https://terraz.ru/
         run: node .github/scripts/verify_live_homepage.mjs
 
-      - name: Upload live homepage diagnostics
+      - name: Upload browser diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -246,6 +119,7 @@ jobs:
           path: |
             live-homepage.png
             live-homepage-reduced-motion.png
+            live-homepage-mobile.png
             live-homepage-report.json
           if-no-files-found: warn
           retention-days: 7
