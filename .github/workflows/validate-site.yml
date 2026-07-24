@@ -21,7 +21,12 @@ jobs:
           node --check assets/js/error.js
 
       - name: Check Python syntax
-        run: python3 -m py_compile .github/scripts/validate_site.py
+        run: |
+          python3 -m py_compile .github/scripts/validate_site.py
+          python3 -m py_compile .github/scripts/validate_homepage.py
 
       - name: Validate HTML, assets and code hygiene
         run: python3 .github/scripts/validate_site.py
+
+      - name: Check homepage regressions
+        run: python3 .github/scripts/validate_homepage.py

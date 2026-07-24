@@ -2,74 +2,166 @@
   "use strict";
 
   var VIDEO_ID = "T3K2Fc4t93Y";
-  var MOBILE_QUERY = "(pointer: coarse), (max-width: 767px)";
   var REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
   var copyResetTimer = null;
-  var playerFrame = null;
+  var player = null;
+  var playerReady = false;
   var videoPaused = false;
   var videoMuted = true;
+  var apiTimeout = null;
 
   function matchesMedia(query) {
     return typeof window.matchMedia === "function" && window.matchMedia(query).matches;
   }
 
   function shouldLoadVideo() {
-    return !matchesMedia(MOBILE_QUERY) && !matchesMedia(REDUCED_MOTION_QUERY);
+    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    return !matchesMedia(REDUCED_MOTION_QUERY) && !(connection && connection.saveData);
   }
 
-  function sendPlayerCommand(command) {
-    if (!playerFrame || !playerFrame.contentWindow) {
+  function setPauseButtonState(paused) {
+    var pauseButton = document.getElementById("video-pause");
+    if (!pauseButton) {
       return;
     }
 
-    playerFrame.contentWindow.postMessage(JSON.stringify({
-      event: "command",
-      func: command,
-      args: []
-    }), "https://www.youtube-nocookie.com");
+    pauseButton.setAttribute(
+      "aria-label",
+      paused ? "Продолжить фоновое видео" : "Приостановить фоновое видео"
+    );
+    pauseButton.firstElementChild.textContent = paused ? "▶" : "Ⅱ";
   }
 
-  function createVideoBackground() {
-    var container = document.getElementById("hero-video");
-    if (!container || !shouldLoadVideo()) {
+  function setVolumeButtonState(muted) {
+    var volumeButton = document.getElementById("video-volume");
+    if (!volumeButton) {
       return;
     }
 
-    var query = new URLSearchParams({
-      autoplay: "1",
-      mute: "1",
-      controls: "0",
-      disablekb: "1",
-      enablejsapi: "1",
-      fs: "0",
-      iv_load_policy: "3",
-      loop: "1",
-      modestbranding: "1",
-      playlist: VIDEO_ID,
-      playsinline: "1",
-      rel: "0",
-      start: "12"
-    });
+    volumeButton.setAttribute(
+      "aria-label",
+      muted ? "Включить звук фонового видео" : "Выключить звук фонового видео"
+    );
+    volumeButton.firstElementChild.textContent = muted ? "×" : "●";
+  }
 
-    if (window.location.origin && window.location.origin !== "null") {
-      query.set("origin", window.location.origin);
+  function markVideoReady() {
+    document.body.classList.add("video-ready");
+    window.clearTimeout(apiTimeout);
+  }
+
+  function handlePlayerReady(event) {
+    playerReady = true;
+    markVideoReady();
+
+    var frame = event.target.getIframe();
+    if (frame) {
+      frame.setAttribute("allow", "autoplay; encrypted-media; picture-in-picture");
+      frame.setAttribute("aria-hidden", "true");
+      frame.tabIndex = -1;
+      frame.title = "Фоновое видео TerraZ";
     }
 
-    playerFrame = document.createElement("iframe");
-    playerFrame.src = "https://www.youtube-nocookie.com/embed/" + VIDEO_ID + "?" + query.toString();
-    playerFrame.title = "Фоновое видео TerraZ";
-    playerFrame.tabIndex = -1;
-    playerFrame.allow = "autoplay; encrypted-media; picture-in-picture";
-    playerFrame.referrerPolicy = "strict-origin-when-cross-origin";
-    playerFrame.setAttribute("aria-hidden", "true");
+    event.target.mute();
+    event.target.seekTo(12, true);
+    event.target.playVideo();
+    videoMuted = true;
+    videoPaused = false;
+    setVolumeButtonState(videoMuted);
+    setPauseButtonState(videoPaused);
+  }
 
-    playerFrame.addEventListener("load", function () {
+  function handlePlayerStateChange(event) {
+    if (!window.YT || !window.YT.PlayerState) {
+      return;
+    }
+
+    if (event.data === window.YT.PlayerState.PLAYING) {
       document.body.classList.add("has-video");
-      sendPlayerCommand("mute");
-      sendPlayerCommand("playVideo");
-    });
+      videoPaused = false;
+      setPauseButtonState(false);
+      return;
+    }
 
-    container.replaceChildren(playerFrame);
+    if (event.data === window.YT.PlayerState.PAUSED) {
+      videoPaused = true;
+      setPauseButtonState(true);
+      return;
+    }
+
+    if (event.data === window.YT.PlayerState.ENDED) {
+      event.target.seekTo(12, true);
+      event.target.playVideo();
+    }
+  }
+
+  function handleAutoplayBlocked() {
+    markVideoReady();
+    videoPaused = true;
+    setPauseButtonState(true);
+  }
+
+  function handlePlayerError() {
+    document.body.classList.remove("has-video", "video-ready");
+    document.body.classList.add("video-error");
+  }
+
+  function createYouTubePlayer() {
+    var container = document.getElementById("hero-video");
+    if (!container || !window.YT || typeof window.YT.Player !== "function") {
+      return;
+    }
+
+    player = new window.YT.Player(container, {
+      videoId: VIDEO_ID,
+      host: "https://www.youtube-nocookie.com",
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        disablekb: 1,
+        fs: 0,
+        iv_load_policy: 3,
+        loop: 1,
+        modestbranding: 1,
+        mute: 1,
+        origin: window.location.origin,
+        playlist: VIDEO_ID,
+        playsinline: 1,
+        rel: 0,
+        start: 12
+      },
+      events: {
+        onReady: handlePlayerReady,
+        onStateChange: handlePlayerStateChange,
+        onAutoplayBlocked: handleAutoplayBlocked,
+        onError: handlePlayerError
+      }
+    });
+  }
+
+  function loadYouTubeApi() {
+    if (!shouldLoadVideo()) {
+      return;
+    }
+
+    if (window.YT && typeof window.YT.Player === "function") {
+      createYouTubePlayer();
+      return;
+    }
+
+    window.onYouTubeIframeAPIReady = createYouTubePlayer;
+
+    var script = document.createElement("script");
+    script.src = "https://www.youtube.com/iframe_api";
+    script.async = true;
+    script.onerror = handlePlayerError;
+    document.head.appendChild(script);
+
+    apiTimeout = window.setTimeout(function () {
+      if (!playerReady) {
+        handlePlayerError();
+      }
+    }, 12000);
   }
 
   function fallbackCopy(text) {
@@ -93,26 +185,35 @@
     return copied;
   }
 
-  function showCopyStatus(button, status, message) {
+  function showCopyStatus(button, status, success) {
     var label = button.querySelector(".server-copy__label");
+    var icon = button.querySelector(".server-copy__icon");
+    var message = success ? "Скопировано" : "Не скопировано";
 
     window.clearTimeout(copyResetTimer);
-    button.classList.add("is-copied");
+    button.classList.toggle("is-copied", success);
     status.textContent = message;
+    status.classList.remove("is-visible");
+    void status.offsetWidth;
     status.classList.add("is-visible");
 
     if (label) {
-      label.textContent = "Скопировано";
+      label.textContent = message;
+    }
+    if (icon) {
+      icon.textContent = success ? "✓" : "!";
     }
 
     copyResetTimer = window.setTimeout(function () {
       button.classList.remove("is-copied");
       status.classList.remove("is-visible");
-
       if (label) {
         label.textContent = "Копировать";
       }
-    }, 1500);
+      if (icon) {
+        icon.textContent = "⧉";
+      }
+    }, 1600);
   }
 
   function setupClipboard() {
@@ -130,22 +231,14 @@
 
       if (modernCopy) {
         modernCopy.then(function () {
-          showCopyStatus(button, status, "Адрес скопирован");
+          showCopyStatus(button, status, true);
         }).catch(function () {
-          if (fallbackCopy(address)) {
-            showCopyStatus(button, status, "Адрес скопирован");
-          } else {
-            showCopyStatus(button, status, "Не удалось скопировать");
-          }
+          showCopyStatus(button, status, fallbackCopy(address));
         });
         return;
       }
 
-      showCopyStatus(
-        button,
-        status,
-        fallbackCopy(address) ? "Адрес скопирован" : "Не удалось скопировать"
-      );
+      showCopyStatus(button, status, fallbackCopy(address));
     });
   }
 
@@ -157,34 +250,40 @@
     }
 
     pauseButton.addEventListener("click", function () {
-      videoPaused = !videoPaused;
-      sendPlayerCommand(videoPaused ? "pauseVideo" : "playVideo");
-      pauseButton.setAttribute(
-        "aria-label",
-        videoPaused ? "Продолжить фоновое видео" : "Приостановить фоновое видео"
-      );
-      pauseButton.firstElementChild.textContent = videoPaused ? "▶" : "Ⅱ";
+      if (!playerReady || !player) {
+        return;
+      }
+
+      if (videoPaused) {
+        player.playVideo();
+      } else {
+        player.pauseVideo();
+      }
     });
 
     volumeButton.addEventListener("click", function () {
+      if (!playerReady || !player) {
+        return;
+      }
+
       videoMuted = !videoMuted;
-      sendPlayerCommand(videoMuted ? "mute" : "unMute");
-      volumeButton.setAttribute(
-        "aria-label",
-        videoMuted ? "Включить звук фонового видео" : "Выключить звук фонового видео"
-      );
-      volumeButton.firstElementChild.textContent = videoMuted ? "×" : "●";
+      if (videoMuted) {
+        player.mute();
+      } else {
+        player.unMute();
+      }
+      setVolumeButtonState(videoMuted);
     });
 
     document.addEventListener("visibilitychange", function () {
-      if (!playerFrame) {
+      if (!playerReady || !player) {
         return;
       }
 
       if (document.hidden) {
-        sendPlayerCommand("pauseVideo");
+        player.pauseVideo();
       } else if (!videoPaused) {
-        sendPlayerCommand("playVideo");
+        player.playVideo();
       }
     });
   }
@@ -192,7 +291,7 @@
   function initialize() {
     setupClipboard();
     setupVideoControls();
-    createVideoBackground();
+    loadYouTubeApi();
   }
 
   if (document.readyState === "loading") {

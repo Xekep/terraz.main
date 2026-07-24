@@ -11,6 +11,7 @@
   <link rel="apple-touch-icon" sizes="76x76" href="assets/apple-touch-icon-76x76.png">
   <link rel="apple-touch-icon" sizes="120x120" href="assets/apple-touch-icon-120x120.png">
   <link rel="stylesheet" href="assets/css/style.css">
+  <link rel="stylesheet" href="assets/css/homepage-interactions.css">
 </head>
 <body>
   <main class="hero" id="hero">
@@ -44,26 +45,26 @@
             <span class="server-copy__label">Копировать</span>
           </span>
         </button>
-        <span class="copy-status" id="copy-status" role="status" aria-live="polite"></span>
+        <span class="copy-status" id="copy-status" role="status" aria-live="polite" aria-atomic="true">Скопировано</span>
 
         <a class="steam-link" href="steam://rungameid/105600// -j s.terraz.ru -p 7777">Играть через Steam</a>
       </div>
 
       <nav class="social-links" aria-label="TerraZ в социальных сетях">
         <a class="social-link" href="https://vk.com/terraz" aria-label="TerraZ во ВКонтакте">
-          <img src="assets/images/vk.png" alt="" width="20" height="20">
+          <span class="social-link__icon social-link__icon--vk" aria-hidden="true"></span>
         </a>
         <a class="social-link" href="https://www.youtube.com/xekep" aria-label="TerraZ на YouTube">
-          <img src="assets/images/youtube.png" alt="" width="20" height="20">
+          <span class="social-link__icon social-link__icon--youtube" aria-hidden="true"></span>
         </a>
         <a class="social-link" href="/conference" aria-label="Конференция TerraZ в Discord">
-          <img src="assets/images/discord.png" alt="" width="22" height="22">
+          <span class="social-link__icon social-link__icon--discord" aria-hidden="true"></span>
         </a>
         <a class="social-link" href="https://t.me/terraz_discussion" aria-label="Обсуждение TerraZ в Telegram">
-          <img src="assets/images/telegram.png" alt="" width="20" height="20">
+          <span class="social-link__icon social-link__icon--telegram" aria-hidden="true"></span>
         </a>
         <a class="social-link" href="https://www.twitch.tv/xekep" aria-label="TerraZ на Twitch">
-          <img src="assets/images/twitch.png" alt="" width="20" height="20">
+          <span class="social-link__icon social-link__icon--twitch" aria-hidden="true"></span>
         </a>
       </nav>
     </section>
