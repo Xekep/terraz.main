@@ -18,7 +18,7 @@ class HomepageParser(HTMLParser):
         self.copy_status_text: list[str] = []
         self.video_attributes: dict[str, str | None] = {}
         self.video_sources: list[dict[str, str | None]] = []
-        self.logo_object: dict[str, str | None] = {}
+        self.logo_host: dict[str, str | None] = {}
         self._inside_copy_status = False
         self._inside_background_video = False
 
@@ -30,8 +30,8 @@ class HomepageParser(HTMLParser):
             self.social_icons.append(classes)
         if attributes.get("id") == "copy-status":
             self._inside_copy_status = True
-        if tag == "object" and attributes.get("id") == "hero-logo-object":
-            self.logo_object = attributes
+        if attributes.get("id") == "hero-logo":
+            self.logo_host = attributes
         if tag == "video" and attributes.get("id") == "hero-video-element":
             self.video_attributes = attributes
             self._inside_background_video = True
@@ -78,12 +78,16 @@ def main() -> None:
     require(".png" not in css, "Social icons must not use square PNG assets")
     require("brightness(0) invert(1)" not in css, "The old white-tile icon filter must not return")
 
-    require('terraz-assets" content="20260725-1' in html, "Homepage assets version was not bumped")
-    require(parser.logo_object.get("type") == "image/svg+xml", "Logo must be embedded as an SVG document")
-    require("terraz-logo.svg?v=20260725-1" in (parser.logo_object.get("data") or ""), "Logo object source is stale")
+    require('terraz-assets" content="20260725-2' in html, "Homepage assets version was not bumped")
+    require(parser.logo_host.get("role") == "img", "Logo host must expose image semantics")
+    require("terraz-logo.svg?v=20260725-2" in (parser.logo_host.get("data-logo-src") or ""), "Inline logo source is stale")
+    require("<object" not in html, "Opaque object-based logo canvas must not return")
     require("hero__logo--base" not in html and "hero__logo--trace" not in html, "Fake two-layer logo reveal must not return")
-    require("logo-drawing.css?v=20260725-1" in html, "Logo drawing stylesheet is not linked")
-    require("logo-animation.js?v=20260725-1" in html, "Logo drawing script is not linked")
+    require("logo-drawing.css?v=20260725-2" in html, "Logo drawing stylesheet is not linked")
+    require("logo-animation.js?v=20260725-2" in html, "Logo drawing script is not linked")
+    require("fetch(source" in logo_js and "DOMParser" in logo_js, "Logo SVG must be loaded as text")
+    require("document.importNode" in logo_js and "replaceChildren" in logo_js, "Logo SVG must be inserted inline")
+    require('querySelectorAll("style, script, title")' in logo_js, "Embedded SVG styles must be removed")
     require("getTotalLength" in logo_js, "Logo path length must be measured from the real SVG path")
     require("path.animate" in logo_js and "strokeDashoffset" in logo_js, "Logo path must animate its real dash offset")
     require('drawing.id = "terraz-logo-write"' in logo_js, "Logo drawing animation must be identifiable in browser tests")
@@ -92,6 +96,7 @@ def main() -> None:
     require('path.style.strokeWidth = "1.15"' in logo_js, "Logo stroke must stay thin")
     require("#1fb8b2" not in logo_js and "#71e7df" not in logo_js, "Old teal logo colors must not return")
     require("background: transparent !important" in logo_css, "Logo container must stay transparent")
+    require(".hero__logo-svg" in logo_css, "Inline SVG logo styling is missing")
     require("box-shadow: none" in logo_css and "filter: none" in logo_css, "Logo must not have a white plate or glow")
     require("clip-path" not in logo_css, "Logo must not be revealed with a clipping mask")
     require("@keyframes section-in" in css, "Staggered section entrance animation is missing")
@@ -116,7 +121,7 @@ def main() -> None:
     require("DEFAULT_LOOP_START = 12" in js, "Static video loop start is missing")
     require("YT.Player" not in js and "iframe_api" not in js, "YouTube player code must not return")
 
-    require("motion-preferences.css?v=20260725-1" in html, "Motion compatibility stylesheet is not current")
+    require("motion-preferences.css?v=20260725-2" in html, "Motion compatibility stylesheet is not current")
     require("section-in .72s" in motion_css, "Section animations must remain enabled with reduced motion")
     require("copy-fade 1.65s" in motion_css, "Copy animation must remain enabled with reduced motion")
     require("animation: none !important" not in motion_css, "Motion compatibility must not disable requested animations")
