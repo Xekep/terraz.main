@@ -1,15 +1,19 @@
-name: Rebuild Pages site
+name: Rebuild and verify Pages site
 
 on:
   push:
     branches:
       - gh-pages
+  pull_request:
+    branches:
+      - gh-pages
+    types:
+      - closed
   workflow_dispatch:
 
 permissions:
   contents: read
   pages: write
-  issues: write
 
 concurrency:
   group: github-pages-rebuild
@@ -17,18 +21,20 @@ concurrency:
 
 jobs:
   rebuild:
+    if: github.event_name != 'pull_request' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      API_URL: https://api.github.com/repos/${{ github.repository }}/pages
+      LIVE_URL: https://terraz.ru/
+      EXPECTED_COMMIT: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
     steps:
-      - name: Inspect Pages configuration and request rebuild
-        id: pages
-        env:
-          GH_TOKEN: ${{ github.token }}
-          API_URL: https://api.github.com/repos/${{ github.repository }}/pages
+      - name: Request Pages rebuild
         shell: bash
         run: |
           set -u
 
-          request() {
+          api_request() {
             local method="$1"
             local url="$2"
             local output="$3"
@@ -42,54 +48,131 @@ jobs:
               "$url"
           }
 
-          config_status="$(request GET "${API_URL}" pages-config.json)"
-          build_status="$(request POST "${API_URL}/builds" pages-build.json)"
+          config_status="$(api_request GET "${API_URL}" pages-config.json)"
+          build_status="$(api_request POST "${API_URL}/builds" pages-build.json)"
 
-          echo "config_status=${config_status}" >> "$GITHUB_OUTPUT"
-          echo "build_status=${build_status}" >> "$GITHUB_OUTPUT"
+          echo "Pages config HTTP: ${config_status}"
+          cat pages-config.json
+          echo
+          echo "Pages rebuild HTTP: ${build_status}"
+          cat pages-build.json
+          echo
 
-          {
-            echo "## GitHub Pages rebuild"
-            echo
-            echo "- commit: \`${GITHUB_SHA}\`"
-            echo "- Pages config HTTP: \`${config_status}\`"
-            echo "- rebuild request HTTP: \`${build_status}\`"
-            echo
-            echo "### Pages configuration"
-            echo '```json'
-            cat pages-config.json
-            echo
-            echo '```'
-            echo
-            echo "### Rebuild response"
-            echo '```json'
-            cat pages-build.json
-            echo
-            echo '```'
-          } > pages-report.md
-
-          if [[ "$build_status" != "201" ]]; then
-            echo "Pages rebuild request failed" >&2
+          if [[ "$config_status" != "200" || "$build_status" != "201" ]]; then
             exit 1
           fi
 
-      - name: Post diagnostic report to PR 9
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Wait for requested Pages build
         shell: bash
         run: |
-          body="$(python3 - <<'PY'
-          import json
+          set -u
+
+          api_get() {
+            local url="$1"
+            local output="$2"
+            curl --silent --show-error \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --output "$output" \
+              --write-out "%{http_code}" \
+              "$url"
+          }
+
+          build_ready=false
+          for attempt in $(seq 1 60); do
+            sleep 2
+            http_status="$(api_get "${API_URL}/builds/latest" pages-latest.json)"
+            build_state="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("status", ""))')"
+            build_commit="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("commit", ""))')"
+            echo "attempt=${attempt} HTTP=${http_status} status=${build_state} commit=${build_commit} expected=${EXPECTED_COMMIT}"
+
+            if [[ "$http_status" == "200" && "$build_state" == "built" && "$build_commit" == "$EXPECTED_COMMIT" ]]; then
+              build_ready=true
+              break
+            fi
+
+            if [[ "$build_state" == "errored" ]]; then
+              cat pages-latest.json
+              exit 1
+            fi
+          done
+
+          cat pages-latest.json
+          echo
+
+          if [[ "$build_ready" != "true" ]]; then
+            echo "The expected Pages build did not finish" >&2
+            exit 1
+          fi
+
+      - name: Verify live homepage and interaction assets
+        shell: bash
+        run: |
+          set -u
+
+          live_ready=false
+          for attempt in $(seq 1 30); do
+            probe_url="${LIVE_URL}?pages_probe=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${attempt}"
+            live_status="$(curl --silent --show-error --location \
+              --header 'Cache-Control: no-cache' \
+              --header 'Pragma: no-cache' \
+              --output live-index.html \
+              --write-out '%{http_code}' \
+              "$probe_url")"
+
+            if [[ "$live_status" == "200" ]] && grep -q 'name="terraz-build"' live-index.html; then
+              live_ready=true
+              break
+            fi
+
+            echo "Live site is not updated yet: attempt=${attempt} HTTP=${live_status}"
+            sleep 2
+          done
+
+          if [[ "$live_ready" != "true" ]]; then
+            echo "Live domain still serves a stale homepage" >&2
+            head -n 50 live-index.html
+            exit 1
+          fi
+
+          interactions_url="$(python3 - <<'PY'
+          import re
           from pathlib import Path
-          print(json.dumps({"body": Path("pages-report.md").read_text(encoding="utf-8")}))
+          from urllib.parse import urljoin
+          html = Path('live-index.html').read_text(encoding='utf-8')
+          match = re.search(r'href="([^"]*homepage-interactions\.css[^"]*)"', html)
+          if not match:
+              raise SystemExit('homepage-interactions.css is not linked')
+          print(urljoin('https://terraz.ru/', match.group(1)))
           PY
           )"
 
-          curl --fail --silent --show-error \
-            --request POST \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues/9/comments" \
-            --data "$body"
+          script_url="$(python3 - <<'PY'
+          import re
+          from pathlib import Path
+          from urllib.parse import urljoin
+          html = Path('live-index.html').read_text(encoding='utf-8')
+          match = re.search(r'src="([^"]*assets/js/index\.js[^"]*)"', html)
+          if not match:
+              raise SystemExit('assets/js/index.js is not linked')
+          print(urljoin('https://terraz.ru/', match.group(1)))
+          PY
+          )"
+
+          curl --fail --silent --show-error --location "$interactions_url" --output interactions.css
+          curl --fail --silent --show-error --location "$script_url" --output homepage.js
+
+          grep -q '\.social-link__icon--vk' interactions.css
+          grep -q '@keyframes terraz-copy-pop' interactions.css
+          grep -q 'showCopyStatus' homepage.js
+          grep -q 'YT.Player' homepage.js
+
+          for icon in vk youtube discord telegram twitch; do
+            curl --fail --silent --show-error --location \
+              "https://terraz.ru/assets/images/${icon}.png?pages_probe=${GITHUB_RUN_ID}" \
+              --output "${icon}.png"
+            test -s "${icon}.png"
+          done
+
+          echo 'Live homepage, copy animation, social icons and YouTube script are available.'
