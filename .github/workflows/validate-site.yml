@@ -6,6 +6,7 @@ on:
 
 permissions:
   contents: read
+  pages: write
 
 jobs:
   validate:
@@ -31,3 +32,41 @@ jobs:
 
       - name: Check homepage regressions
         run: python3 .github/scripts/validate_homepage.py
+
+      - name: Inspect Pages and request legacy rebuild
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          API_URL: https://api.github.com/repos/${{ github.repository }}/pages
+        shell: bash
+        run: |
+          set -u
+
+          echo '=== Pages configuration ==='
+          config_status="$(curl --silent --show-error \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --output pages-config.json \
+            --write-out "%{http_code}" \
+            "${API_URL}")"
+          echo "HTTP ${config_status}"
+          cat pages-config.json
+          echo
+
+          echo '=== Pages rebuild request ==='
+          build_status="$(curl --silent --show-error \
+            --request POST \
+            --header "Accept: application/vnd.github+json" \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --output pages-build.json \
+            --write-out "%{http_code}" \
+            "${API_URL}/builds")"
+          echo "HTTP ${build_status}"
+          cat pages-build.json
+          echo
+
+          if [[ "$config_status" != "200" || "$build_status" != "201" ]]; then
+            exit 1
+          fi
