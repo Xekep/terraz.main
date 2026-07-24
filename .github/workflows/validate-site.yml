@@ -12,27 +12,6 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Check JavaScript syntax
-        run: |
-          node --check assets/js/index.js
-          node --check assets/js/mgGlitch.min.js
-          node --check assets/js/redirect.js
-          node --check assets/js/error.js
-
-      - name: Check Python syntax
-        run: |
-          python3 -m py_compile .github/scripts/validate_site.py
-          python3 -m py_compile .github/scripts/validate_homepage.py
-
-      - name: Validate HTML, assets and code hygiene
-        run: python3 .github/scripts/validate_site.py
-
-      - name: Check homepage regressions
-        run: python3 .github/scripts/validate_homepage.py
-
       - name: Inspect Pages and request legacy rebuild
         if: github.event_name == 'pull_request'
         env:
@@ -70,3 +49,24 @@ jobs:
           if [[ "$config_status" != "200" || "$build_status" != "201" ]]; then
             exit 1
           fi
+
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check assets/js/index.js
+          node --check assets/js/mgGlitch.min.js
+          node --check assets/js/redirect.js
+          node --check assets/js/error.js
+
+      - name: Check Python syntax
+        run: |
+          python3 -m py_compile .github/scripts/validate_site.py
+          python3 -m py_compile .github/scripts/validate_homepage.py
+
+      - name: Validate HTML, assets and code hygiene
+        run: python3 .github/scripts/validate_site.py
+
+      - name: Check homepage regressions
+        run: python3 .github/scripts/validate_homepage.py
