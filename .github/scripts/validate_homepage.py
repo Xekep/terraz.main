@@ -8,6 +8,7 @@ VIDEO_CSS = ROOT / "assets/css/static-video.css"
 MOTION_CSS = ROOT / "assets/css/motion-preferences.css"
 LOGO_CSS = ROOT / "assets/css/logo-drawing.css"
 LOGO_JS = ROOT / "assets/js/logo-animation.js"
+LOGO_SVG = ROOT / "assets/images/terraz-logo.svg"
 JS = ROOT / "assets/js/index.js"
 
 
@@ -61,6 +62,7 @@ def main() -> None:
     motion_css = MOTION_CSS.read_text(encoding="utf-8")
     logo_css = LOGO_CSS.read_text(encoding="utf-8")
     logo_js = LOGO_JS.read_text(encoding="utf-8")
+    logo_svg = LOGO_SVG.read_text(encoding="utf-8")
     js = JS.read_text(encoding="utf-8")
 
     parser = HomepageParser()
@@ -78,19 +80,30 @@ def main() -> None:
     require(".png" not in css, "Social icons must not use square PNG assets")
     require("brightness(0) invert(1)" not in css, "The old white-tile icon filter must not return")
 
-    require('terraz-assets" content="20260725-3' in html, "Homepage assets version was not bumped")
+    require('terraz-assets" content="20260725-4' in html, "Homepage assets version was not bumped")
     require(parser.logo_host.get("role") == "img", "Logo host must expose image semantics")
-    require("terraz-logo.svg?v=20260725-3" in (parser.logo_host.get("data-logo-src") or ""), "Inline logo source is stale")
+    require("terraz-logo.svg?v=20260725-4" in (parser.logo_host.get("data-logo-src") or ""), "Inline logo source is stale")
     require("<object" not in html, "Opaque object-based logo canvas must not return")
     require("hero__logo--base" not in html and "hero__logo--trace" not in html, "Fake two-layer logo reveal must not return")
-    require("logo-drawing.css?v=20260725-3" in html, "Logo drawing stylesheet is not linked")
-    require("logo-animation.js?v=20260725-3" in html, "Logo drawing script is not linked")
+    require("logo-drawing.css?v=20260725-4" in html, "Logo drawing stylesheet is not linked")
+    require("logo-animation.js?v=20260725-4" in html, "Logo drawing script is not linked")
+
+    require(logo_svg.count('class="logo-stroke"') == 7, "Logo must use seven ordered centerline strokes")
+    require("title-letter" not in logo_svg, "Closed outline path must not return")
+    for order in range(7):
+        require(f'data-order="{order}"' in logo_svg, "Logo stroke order is incomplete")
+    require("fill=\"none\"" in logo_svg and "stroke=\"#ffffff\"" in logo_svg, "Logo SVG fallback must be a white centerline")
+
     require("fetch(source" in logo_js and "DOMParser" in logo_js, "Logo SVG must be loaded as text")
     require("document.importNode" in logo_js and "replaceChildren" in logo_js, "Logo SVG must be inserted inline")
     require('querySelectorAll("style, script, title")' in logo_js, "Embedded SVG styles must be removed")
-    require("getTotalLength" in logo_js, "Logo path length must be measured from the real SVG path")
-    require("path.animate" in logo_js and "strokeDashoffset" in logo_js, "Logo path must animate its real dash offset")
-    require('drawing.id = "terraz-logo-write"' in logo_js, "Logo drawing animation must be identifiable in browser tests")
+    require('querySelectorAll(".logo-stroke")' in logo_js, "Ordered logo centerline strokes are not initialized")
+    require("getTotalLength" in logo_js, "Logo stroke lengths must be measured")
+    require("path.animate" in logo_js and "strokeDashoffset" in logo_js, "Logo strokes must animate their dash offsets")
+    require('drawing.id = "terraz-logo-write-" + index' in logo_js, "Logo stroke animations must be individually identifiable")
+    require('direction: "normal"' in logo_js and "iterations: 1" in logo_js, "Logo strokes must draw once in the forward direction")
+    require("nextDelay += duration + STROKE_GAP" in logo_js, "Logo strokes must run sequentially")
+    require("alternate" not in logo_js and "reverse" not in logo_js, "Reverse logo animation must not return")
     require('path.style.transitionProperty = "none"' in logo_js, "Reduced-motion micro-transitions must be disabled before drawing")
     require('path.style.fill = "none"' in logo_js, "Logo must not receive a solid fill")
     require('path.style.stroke = "#ffffff"' in logo_js, "Logo must be drawn in white")
@@ -122,7 +135,7 @@ def main() -> None:
     require("DEFAULT_LOOP_START = 12" in js, "Static video loop start is missing")
     require("YT.Player" not in js and "iframe_api" not in js, "YouTube player code must not return")
 
-    require("motion-preferences.css?v=20260725-3" in html, "Motion compatibility stylesheet is not current")
+    require("motion-preferences.css?v=20260725-4" in html, "Motion compatibility stylesheet is not current")
     require("section-in .72s" in motion_css, "Section animations must remain enabled with reduced motion")
     require("copy-fade 1.65s" in motion_css, "Copy animation must remain enabled with reduced motion")
     require("animation: none !important" not in motion_css, "Motion compatibility must not disable requested animations")

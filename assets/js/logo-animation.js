@@ -1,9 +1,11 @@
 (function () {
   "use strict";
 
-  function animateLogoPath(logoHost, path) {
-    var length = typeof path.getTotalLength === "function" ? path.getTotalLength() : 3000;
+  var TOTAL_DRAWING_DURATION = 4200;
+  var DRAWING_DELAY = 120;
+  var STROKE_GAP = 35;
 
+  function prepareStroke(path, length) {
     path.getAnimations().forEach(function (animation) {
       animation.cancel();
     });
@@ -22,48 +24,52 @@
     path.style.vectorEffect = "non-scaling-stroke";
     path.style.filter = "none";
     path.style.opacity = "1";
+  }
 
-    var drawing = path.animate([
-      {
-        offset: 0,
-        stroke: "#ffffff",
-        strokeDashoffset: length,
-        opacity: 0.28,
-      },
-      {
-        offset: 0.14,
-        stroke: "#ffffff",
-        strokeDashoffset: length * 0.9,
-        opacity: 1,
-      },
-      {
-        offset: 0.55,
-        stroke: "#ffffff",
-        strokeDashoffset: length * 0.43,
-        opacity: 1,
-      },
-      {
-        offset: 0.86,
-        stroke: "#ffffff",
-        strokeDashoffset: length * 0.08,
-        opacity: 1,
-      },
-      {
-        offset: 1,
-        stroke: "#ffffff",
-        strokeDashoffset: 0,
-        opacity: 1,
-      },
-    ], {
-      duration: 4200,
-      delay: 120,
-      easing: "cubic-bezier(.42, .02, .2, 1)",
-      fill: "forwards",
+  function animateLogoStrokes(logoHost, strokes) {
+    var lengths = strokes.map(function (path) {
+      return typeof path.getTotalLength === "function" ? path.getTotalLength() : 100;
+    });
+    var totalLength = lengths.reduce(function (sum, length) {
+      return sum + length;
+    }, 0);
+    var availableDuration = TOTAL_DRAWING_DURATION - STROKE_GAP * Math.max(strokes.length - 1, 0);
+    var nextDelay = DRAWING_DELAY;
+
+    strokes.forEach(function (path, index) {
+      var length = lengths[index];
+      var duration = Math.max(180, availableDuration * length / totalLength);
+
+      prepareStroke(path, length);
+      path.dataset.logoOrder = String(index);
+      path.dataset.logoLength = String(length);
+
+      var drawing = path.animate([
+        {
+          strokeDashoffset: length,
+          opacity: index === 0 ? 0.28 : 1,
+        },
+        {
+          strokeDashoffset: 0,
+          opacity: 1,
+        },
+      ], {
+        duration: duration,
+        delay: nextDelay,
+        easing: "cubic-bezier(.42, .02, .2, 1)",
+        fill: "forwards",
+        direction: "normal",
+        iterations: 1,
+      });
+
+      drawing.id = "terraz-logo-write-" + index;
+      nextDelay += duration + STROKE_GAP;
     });
 
-    drawing.id = "terraz-logo-write";
     logoHost.dataset.drawingReady = "true";
-    logoHost.dataset.pathLength = String(length);
+    logoHost.dataset.pathLength = String(totalLength);
+    logoHost.dataset.strokeCount = String(strokes.length);
+    logoHost.dataset.drawingDuration = String(nextDelay - DRAWING_DELAY - STROKE_GAP);
   }
 
   async function setupLogoDrawing() {
@@ -102,13 +108,16 @@
       svg.style.background = "transparent";
       svg.style.overflow = "visible";
 
-      var path = svg.querySelector(".title-letter");
-      if (!path) {
-        throw new Error("Logo SVG path is missing");
+      var strokes = Array.from(svg.querySelectorAll(".logo-stroke"));
+      strokes.sort(function (left, right) {
+        return Number(left.dataset.order) - Number(right.dataset.order);
+      });
+      if (strokes.length < 2) {
+        throw new Error("Logo SVG single-pass strokes are missing");
       }
 
       logoHost.replaceChildren(svg);
-      animateLogoPath(logoHost, path);
+      animateLogoStrokes(logoHost, strokes);
     } catch (error) {
       console.error("Unable to initialize TerraZ logo drawing", error);
       logoHost.dataset.drawingReady = "fallback";
