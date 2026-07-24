@@ -42,11 +42,12 @@
       return;
     }
 
+    pauseButton.dataset.state = paused ? "paused" : "playing";
+    pauseButton.setAttribute("aria-pressed", paused ? "true" : "false");
     pauseButton.setAttribute(
       "aria-label",
       paused ? "Продолжить фоновое видео" : "Приостановить фоновое видео"
     );
-    pauseButton.firstElementChild.textContent = paused ? "▶" : "Ⅱ";
   }
 
   function setVolumeButtonState(muted) {
@@ -55,11 +56,12 @@
       return;
     }
 
+    volumeButton.dataset.muted = muted ? "true" : "false";
+    volumeButton.setAttribute("aria-pressed", muted ? "false" : "true");
     volumeButton.setAttribute(
       "aria-label",
       muted ? "Включить звук фонового видео" : "Выключить звук фонового видео"
     );
-    volumeButton.firstElementChild.textContent = muted ? "×" : "●";
   }
 
   function markVideoReady() {
@@ -204,7 +206,7 @@
       if (icon) {
         icon.textContent = "⧉";
       }
-    }, 1600);
+    }, 1700);
   }
 
   function setupClipboard() {
