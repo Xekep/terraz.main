@@ -1,0 +1,24 @@
+/* Keep essential feedback and background controls usable when OS animations are disabled. */
+
+@media (prefers-reduced-motion: reduce) {
+  .hero__video,
+  .hero__video-element {
+    display: block !important;
+  }
+
+  body.video-ready .video-controls,
+  body.has-video .video-controls {
+    display: flex !important;
+  }
+
+  .copy-status.is-visible {
+    opacity: 1 !important;
+    animation: none !important;
+    transition: none !important;
+    transform: translate(-50%, -100%) scale(1) !important;
+  }
+
+  .server-copy.is-copied .server-copy__icon {
+    animation: none !important;
+  }
+}
