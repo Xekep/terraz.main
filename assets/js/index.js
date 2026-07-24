@@ -2,22 +2,12 @@
   "use strict";
 
   var DEFAULT_LOOP_START = 12;
-  var REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
   var copyResetTimer = null;
   var videoElement = null;
   var videoReady = false;
   var videoMuted = true;
   var userPaused = false;
   var pausedByVisibility = false;
-
-  function matchesMedia(query) {
-    return typeof window.matchMedia === "function" && window.matchMedia(query).matches;
-  }
-
-  function shouldLoadVideo() {
-    var connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    return !matchesMedia(REDUCED_MOTION_QUERY) && !(connection && connection.saveData);
-  }
 
   function getLoopStart() {
     if (!videoElement) {
@@ -133,13 +123,11 @@
 
   function setupStaticVideo() {
     videoElement = document.getElementById("hero-video-element");
-    if (!videoElement || !shouldLoadVideo()) {
-      if (videoElement) {
-        videoElement.preload = "none";
-      }
+    if (!videoElement) {
       return;
     }
 
+    videoElement.autoplay = true;
     videoElement.defaultMuted = true;
     videoElement.muted = true;
     videoElement.volume = 1;
