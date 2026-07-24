@@ -17,19 +17,31 @@
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
-  filter: brightness(0) invert(1);
+  filter: none;
   transition: opacity .2s ease, transform .2s ease;
 }
 
-.social-link__icon--vk { background-image: url("../images/vk.png"); }
-.social-link__icon--youtube { background-image: url("../images/youtube.png"); }
+.social-link__icon--vk {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHRleHQgeD0iMTIiIHk9IjE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LWZhbWlseT0iQXJpYWwsc2Fucy1zZXJpZiIgZm9udC1zaXplPSIxMCIgZm9udC13ZWlnaHQ9IjkwMCIgZmlsbD0iI2ZmZiI+Vks8L3RleHQ+PC9zdmc+");
+}
+
+.social-link__icon--youtube {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3QgeD0iMi41IiB5PSI1LjUiIHdpZHRoPSIxOSIgaGVpZ2h0PSIxMyIgcng9IjQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIyIi8+PHBhdGggZD0iTTEwIDlsNiAzLTYgM3oiIGZpbGw9IiNmZmYiLz48L3N2Zz4=");
+}
+
 .social-link__icon--discord {
   width: 22px;
   height: 22px;
-  background-image: url("../images/discord.png");
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTcuMiA3LjNBMTMuNCAxMy40IDAgMCAxIDEyIDYuNGMxLjcgMCAzLjMuMyA0LjguOSAxLjggMi41IDIuNyA1LjIgMyA4LTEuMiAxLjUtMi42IDIuNS00LjMgM2wtMS4xLTEuNWMuNy0uMiAxLjQtLjUgMi0uOS0yLjggMS4zLTUuOSAxLjMtOC43IDAgLjYuNCAxLjMuNyAyIC45bC0xLjEgMS41Yy0xLjctLjUtMy4xLTEuNS00LjMtMyAuMy0yLjggMS4yLTUuNSAyLjktOFoiIGZpbGw9Im5vbmUiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSIxLjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48Y2lyY2xlIGN4PSI5LjQiIGN5PSIxMi42IiByPSIxLjE1IiBmaWxsPSIjZmZmIi8+PGNpcmNsZSBjeD0iMTQuNiIgY3k9IjEyLjYiIHI9IjEuMTUiIGZpbGw9IiNmZmYiLz48L3N2Zz4=");
 }
-.social-link__icon--telegram { background-image: url("../images/telegram.png"); }
-.social-link__icon--twitch { background-image: url("../images/twitch.png"); }
+
+.social-link__icon--telegram {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTIxLjEgNC4xIDE4LjIgMTljLS4yIDEuMS0uOCAxLjQtMS43LjlsLTQuNS0zLjMtMi4yIDIuMWMtLjIuMi0uNC40LS45LjRsLjMtNC42IDguNC03LjZjLjQtLjMtLjEtLjUtLjYtLjJsLTEwLjQgNi41LTQuNS0xLjRjLTEtLjMtMS0xIC4yLTEuNGwxNy41LTYuOGMuOC0uMyAxLjUuMiAxLjMgMS41WiIgZmlsbD0iI2ZmZiIvPjwvc3ZnPg==");
+}
+
+.social-link__icon--twitch {
+  background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTUgM2gxNXYxMWwtNSA1aC00bC0zIDJ2LTJINFY1eiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZmIiBzdHJva2Utd2lkdGg9IjEuOCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCIvPjxwYXRoIGQ9Ik0xMCA4djVNMTUgOHY1IiBzdHJva2U9IiNmZmYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIi8+PC9zdmc+");
+}
 
 .legacy-social-links .social-link {
   display: inline-flex !important;
