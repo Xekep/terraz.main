@@ -12,41 +12,94 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Inspect Pages and request legacy rebuild
+      - name: Inspect, rebuild and verify GitHub Pages
         if: github.event_name == 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
           API_URL: https://api.github.com/repos/${{ github.repository }}/pages
+          EXPECTED_COMMIT: ${{ github.event.pull_request.base.sha }}
+          LIVE_URL: https://terraz.ru/
         shell: bash
         run: |
           set -u
 
+          api_request() {
+            local method="$1"
+            local url="$2"
+            local output="$3"
+            curl --silent --show-error \
+              --request "$method" \
+              --header "Accept: application/vnd.github+json" \
+              --header "Authorization: Bearer ${GH_TOKEN}" \
+              --header "X-GitHub-Api-Version: 2022-11-28" \
+              --output "$output" \
+              --write-out "%{http_code}" \
+              "$url"
+          }
+
           echo '=== Pages configuration ==='
-          config_status="$(curl --silent --show-error \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --output pages-config.json \
-            --write-out "%{http_code}" \
-            "${API_URL}")"
+          config_status="$(api_request GET "${API_URL}" pages-config.json)"
           echo "HTTP ${config_status}"
           cat pages-config.json
           echo
 
           echo '=== Pages rebuild request ==='
-          build_status="$(curl --silent --show-error \
-            --request POST \
-            --header "Accept: application/vnd.github+json" \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --output pages-build.json \
-            --write-out "%{http_code}" \
-            "${API_URL}/builds")"
+          build_status="$(api_request POST "${API_URL}/builds" pages-build.json)"
           echo "HTTP ${build_status}"
           cat pages-build.json
           echo
 
           if [[ "$config_status" != "200" || "$build_status" != "201" ]]; then
+            exit 1
+          fi
+
+          echo '=== Waiting for the requested Pages build ==='
+          build_ready=false
+          for attempt in $(seq 1 45); do
+            sleep 2
+            latest_status="$(api_request GET "${API_URL}/builds/latest" pages-latest.json)"
+            latest_state="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("status", ""))')"
+            latest_commit="$(python3 -c 'import json; print(json.load(open("pages-latest.json")).get("commit", ""))')"
+            echo "attempt=${attempt} HTTP=${latest_status} status=${latest_state} commit=${latest_commit}"
+
+            if [[ "$latest_status" == "200" && "$latest_state" == "built" && "$latest_commit" == "$EXPECTED_COMMIT" ]]; then
+              build_ready=true
+              break
+            fi
+
+            if [[ "$latest_state" == "errored" ]]; then
+              cat pages-latest.json
+              exit 1
+            fi
+          done
+
+          echo '=== Latest Pages build ==='
+          cat pages-latest.json
+          echo
+
+          if [[ "$build_ready" != "true" ]]; then
+            echo "Expected Pages build did not finish" >&2
+            exit 1
+          fi
+
+          echo '=== Live site cache-busting probe ==='
+          probe_url="${LIVE_URL}?pages_probe=${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          live_status="$(curl --silent --show-error --location \
+            --header 'Cache-Control: no-cache' \
+            --header 'Pragma: no-cache' \
+            --output live-index.html \
+            --write-out '%{http_code}' \
+            "$probe_url")"
+          echo "HTTP ${live_status} ${probe_url}"
+          grep -E '<title>|terraz-build|homepage-interactions|assets/js/index' live-index.html || true
+
+          if [[ "$live_status" != "200" ]]; then
+            exit 1
+          fi
+
+          if ! grep -q 'name="terraz-build" content="20260724-3"' live-index.html; then
+            echo 'Live domain still serves the stale index.html' >&2
+            head -n 40 live-index.html
             exit 1
           fi
 
