@@ -1,0 +1,44 @@
+name: Verify inline logo live
+
+on:
+  pull_request:
+    branches:
+      - gh-pages
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out verification scripts
+        uses: actions/checkout@v5
+
+      - name: Prepare Chrome
+        shell: bash
+        run: |
+          chrome_path="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [[ -z "$chrome_path" ]]; then
+            echo 'Chrome or Chromium is unavailable on the runner' >&2
+            exit 1
+          fi
+          echo "CHROME_PATH=${chrome_path}" >> "$GITHUB_ENV"
+          npm install --no-save --package-lock=false puppeteer-core@24.15.0
+
+      - name: Verify published inline logo and video zoom
+        env:
+          LIVE_URL: https://terraz.ru/
+        run: node .github/scripts/verify_live_homepage.mjs
+
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: inline-logo-live-diagnostics
+          path: |
+            live-homepage.png
+            live-homepage-reduced-motion.png
+            live-homepage-report.json
+          if-no-files-found: warn
+          retention-days: 2
