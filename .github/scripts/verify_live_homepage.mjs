@@ -64,6 +64,8 @@ try {
         iconWidth: iconRect?.width ?? 0,
         iconHeight: iconRect?.height ?? 0,
         backgroundImage: iconStyle?.backgroundImage ?? "none",
+        backgroundSize: iconStyle?.backgroundSize ?? "",
+        filter: iconStyle?.filter ?? "none",
         iconDisplay: iconStyle?.display ?? "none",
         iconVisibility: iconStyle?.visibility ?? "hidden",
         iconOpacity: Number(iconStyle?.opacity ?? 0),
@@ -76,18 +78,21 @@ try {
   }
 
   for (const icon of socialState) {
+    const isTransparentSvg = icon.backgroundImage.includes("data:image/svg+xml");
     const visible =
       icon.linkWidth >= 30 &&
       icon.linkHeight >= 30 &&
       icon.iconWidth >= 16 &&
       icon.iconHeight >= 16 &&
-      icon.backgroundImage !== "none" &&
+      isTransparentSvg &&
+      icon.backgroundSize === "contain" &&
+      icon.filter === "none" &&
       icon.iconDisplay !== "none" &&
       icon.iconVisibility !== "hidden" &&
       icon.iconOpacity > 0;
 
     if (!visible) {
-      throw new Error(`Social icon is not visibly rendered: ${JSON.stringify(icon)}`);
+      throw new Error(`Social icon is not a transparent rendered SVG: ${JSON.stringify(icon)}`);
     }
   }
 
