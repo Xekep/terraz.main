@@ -1,4 +1,4 @@
-/* Keep the logo as one SVG document so its path is genuinely drawn. */
+/* Keep the logo as one transparent SVG document with a thin drawn stroke. */
 
 .hero__logo {
   display: block;
@@ -8,14 +8,26 @@
   margin: 0 auto 22px;
   overflow: visible;
   pointer-events: none;
+  color: #fff;
   border: 0;
-  filter: drop-shadow(0 8px 24px rgba(0, 0, 0, .3));
+  background: transparent !important;
+  box-shadow: none;
+  filter: none;
+  opacity: 0;
+  transition: opacity .16s ease;
+}
+
+.hero__logo[data-drawing-ready="true"] {
+  opacity: 1;
 }
 
 .hero__logo > img {
   display: block;
   width: 100%;
   height: auto;
+  background: transparent !important;
+  box-shadow: none;
+  filter: none;
 }
 
 @media (max-width: 768px), (max-height: 680px) {
