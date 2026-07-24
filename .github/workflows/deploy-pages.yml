@@ -106,7 +106,7 @@ jobs:
             exit 1
           fi
 
-      - name: Verify live homepage and interaction assets
+      - name: Verify live homepage resources
         shell: bash
         run: |
           set -u
@@ -163,10 +163,10 @@ jobs:
           curl --fail --silent --show-error --location "$interactions_url" --output interactions.css
           curl --fail --silent --show-error --location "$script_url" --output homepage.js
 
-          grep -q '\.social-link__icon--vk' interactions.css
-          grep -q '@keyframes terraz-copy-pop' interactions.css
-          grep -q 'showCopyStatus' homepage.js
-          grep -q 'YT.Player' homepage.js
+          grep -Fq '.social-link__icon--vk' interactions.css
+          grep -Fq '@keyframes copy-pop' interactions.css
+          grep -Fq 'showCopyStatus' homepage.js
+          grep -Fq 'YT.Player' homepage.js
 
           for icon in vk youtube discord telegram twitch; do
             curl --fail --silent --show-error --location \
@@ -175,4 +175,34 @@ jobs:
             test -s "${icon}.png"
           done
 
-          echo 'Live homepage, copy animation, social icons and YouTube script are available.'
+          echo 'Live homepage resources are available.'
+
+      - name: Check out browser verification
+        uses: actions/checkout@v5
+
+      - name: Prepare Chrome browser test
+        shell: bash
+        run: |
+          chrome_path="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          if [[ -z "$chrome_path" ]]; then
+            echo 'Chrome or Chromium is unavailable on the runner' >&2
+            exit 1
+          fi
+          echo "CHROME_PATH=${chrome_path}" >> "$GITHUB_ENV"
+          npm install --no-save --package-lock=false puppeteer-core@24.15.0
+
+      - name: Verify rendered icons and copy animation in Chrome
+        env:
+          LIVE_URL: https://terraz.ru/
+        run: node .github/scripts/verify_live_homepage.mjs
+
+      - name: Upload live homepage diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: live-homepage-diagnostics
+          path: |
+            live-homepage.png
+            live-homepage-report.json
+          if-no-files-found: warn
+          retention-days: 7
