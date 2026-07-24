@@ -14,69 +14,16 @@ jobs:
     env:
       VIDEO_URL: https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4
     steps:
-      - name: Check response headers and byte ranges
+      - name: Collect concise video diagnostics
         shell: bash
         run: |
           set -euo pipefail
 
-          echo '=== DNS ==='
-          getent ahosts d.terraz.ru || true
-
-          echo '=== HEAD ==='
-          curl --fail --silent --show-error --location --head \
-            --connect-timeout 15 --max-time 30 \
-            "$VIDEO_URL" | tee head.txt
-
-          echo '=== RANGE 0-1023 ==='
-          curl --fail --silent --show-error --location \
-            --range 0-1023 \
-            --dump-header range-head.txt \
-            --output range-head.bin \
-            --connect-timeout 15 --max-time 30 \
-            "$VIDEO_URL"
-          cat range-head.txt
-          printf 'Downloaded bytes: '
-          wc -c < range-head.bin
-
-          echo '=== RANGE last 1 MiB ==='
-          curl --fail --silent --show-error --location \
-            --range -1048576 \
-            --dump-header range-tail.txt \
-            --output range-tail.bin \
-            --connect-timeout 15 --max-time 60 \
-            "$VIDEO_URL"
-          cat range-tail.txt
-          printf 'Downloaded bytes: '
-          wc -c < range-tail.bin
-
-          python3 - <<'PY'
-          from pathlib import Path
-
-          for filename in ('range-head.bin', 'range-tail.bin'):
-              data = Path(filename).read_bytes()
-              print(f'=== MP4 atoms in {filename} ===')
-              for atom in (b'ftyp', b'moov', b'mdat', b'free', b'wide'):
-                  positions = []
-                  start = 0
-                  while True:
-                      position = data.find(atom, start)
-                      if position < 0:
-                          break
-                      positions.append(position)
-                      start = position + 1
-                  print(atom.decode(), positions[:10])
-          PY
-
-          grep -Eqi '^content-type: *video/mp4' head.txt
-          grep -Eqi '^accept-ranges: *bytes' head.txt
-          grep -Eq '^HTTP/[^ ]+ 206' range-head.txt
-          grep -Eqi '^content-range: *bytes 0-1023/' range-head.txt
-          test "$(wc -c < range-head.bin)" -eq 1024
-
-      - name: Probe MP4 metadata remotely
-        shell: bash
-        run: |
-          set -euo pipefail
+          curl --fail --silent --show-error --location --head "$VIDEO_URL" > head.txt
+          curl --fail --silent --show-error --location --range 0-1048575 \
+            --dump-header range-head.txt --output range-head.bin "$VIDEO_URL"
+          curl --fail --silent --show-error --location --range -1048576 \
+            --dump-header range-tail.txt --output range-tail.bin "$VIDEO_URL"
 
           if ! command -v ffprobe >/dev/null 2>&1; then
             sudo apt-get update -qq
@@ -86,19 +33,56 @@ jobs:
           ffprobe -v error \
             -show_entries format=format_name,duration,size,bit_rate \
             -show_entries stream=index,codec_type,codec_name,profile,width,height,pix_fmt,r_frame_rate,avg_frame_rate,bit_rate \
-            -of json \
-            "$VIDEO_URL" | tee ffprobe.json
+            -of json "$VIDEO_URL" > ffprobe.json
 
           python3 - <<'PY'
           import json
+          import re
           from pathlib import Path
 
-          report = json.loads(Path('ffprobe.json').read_text())
-          streams = report.get('streams', [])
-          video = next((stream for stream in streams if stream.get('codec_type') == 'video'), None)
-          if not video:
-              raise SystemExit('No video stream found')
-          if video.get('codec_name') != 'h264':
-              raise SystemExit(f"Unexpected video codec: {video.get('codec_name')}")
-          print('Remote ffprobe completed successfully')
+          def headers(path):
+              text = Path(path).read_text(encoding='latin-1')
+              result = {'status': re.findall(r'^HTTP/\S+\s+(\d+)', text, re.M)[-1]}
+              for key in ('content-type', 'content-length', 'accept-ranges', 'content-range', 'cache-control', 'etag', 'last-modified'):
+                  matches = re.findall(rf'^{re.escape(key)}:\s*(.+)$', text, re.I | re.M)
+                  if matches:
+                      result[key] = matches[-1].strip()
+              return result
+
+          def atoms(path):
+              data = Path(path).read_bytes()
+              return {atom.decode(): data.find(atom) for atom in (b'ftyp', b'moov', b'mdat')}
+
+          probe = json.loads(Path('ffprobe.json').read_text())
+          report = {
+              'head': headers('head.txt'),
+              'first_range': headers('range-head.txt'),
+              'last_range': headers('range-tail.txt'),
+              'first_megabyte_atoms': atoms('range-head.bin'),
+              'last_megabyte_atoms': atoms('range-tail.bin'),
+              'ffprobe': probe,
+          }
+          Path('video-report.json').write_text(json.dumps(report, ensure_ascii=False, indent=2))
+          print(json.dumps(report, ensure_ascii=False, indent=2))
+
+          head = report['head']
+          first = report['first_range']
+          if head.get('content-type') != 'video/mp4':
+              raise SystemExit('Wrong MIME type')
+          if head.get('accept-ranges') != 'bytes':
+              raise SystemExit('Byte ranges are disabled')
+          if first.get('status') != '206':
+              raise SystemExit('Range request did not return 206')
           PY
+
+      - name: Upload video diagnostics
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-video-diagnostics
+          path: |
+            video-report.json
+            head.txt
+            range-head.txt
+            range-tail.txt
+            ffprobe.json
+          retention-days: 1
