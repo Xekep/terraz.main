@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260724-8";
+const expectedAssetsVersion = "20260724-9";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -32,15 +32,21 @@ async function readLogoState(page) {
     const object = document.querySelector("#hero-logo-object");
     const path = object?.contentDocument?.querySelector(".title-letter");
     const style = path ? getComputedStyle(path) : null;
+    const animations = path?.getAnimations().map((animation) => ({
+      id: animation.id,
+      currentTime: Number(animation.currentTime ?? -1),
+      playState: animation.playState,
+    })) ?? [];
+
     return {
       objectExists: Boolean(object),
       ready: object?.dataset.drawingReady === "true",
       pathExists: Boolean(path),
-      animationName: style?.animationName ?? "none",
-      animationDuration: style?.animationDuration ?? "0s",
+      pathLength: Number.parseFloat(object?.dataset.pathLength ?? "NaN"),
       dashOffset: Number.parseFloat(style?.strokeDashoffset ?? "NaN"),
       dashArray: Number.parseFloat(style?.strokeDasharray ?? "NaN"),
       fillOpacity: Number.parseFloat(style?.fillOpacity ?? "0"),
+      animations,
     };
   });
 }
@@ -53,11 +59,13 @@ async function verifyLogoDrawing(page) {
   await delay(3_500);
   const end = await readLogoState(page);
 
+  const hasDrawingAnimation = start.animations.some((animation) => animation.id === "terraz-logo-write");
   if (
-    !start.objectExists || !start.pathExists || start.animationName !== "terraz-logo-write" ||
-    Number.parseFloat(start.animationDuration) < 3.5 || !Number.isFinite(start.dashArray) ||
-    !Number.isFinite(start.dashOffset) || !Number.isFinite(middle.dashOffset) ||
-    middle.dashOffset >= start.dashOffset || end.dashOffset > 2 || end.fillOpacity < 0.1
+    !start.objectExists || !start.pathExists || !hasDrawingAnimation ||
+    !Number.isFinite(start.pathLength) || start.pathLength < 1000 ||
+    !Number.isFinite(start.dashArray) || !Number.isFinite(start.dashOffset) ||
+    !Number.isFinite(middle.dashOffset) || middle.dashOffset >= start.dashOffset ||
+    end.dashOffset > 2 || end.fillOpacity < 0.1
   ) {
     throw new Error(`Logo path is not genuinely drawn: ${JSON.stringify({ start, middle, end })}`);
   }
