@@ -93,7 +93,20 @@ try {
 
   await page.click("#server-copy");
   await page.waitForFunction(
-    () => document.querySelector("#copy-status")?.classList.contains("is-visible"),
+    () => {
+      const button = document.querySelector("#server-copy");
+      const status = document.querySelector("#copy-status");
+      const icon = button?.querySelector(".server-copy__icon");
+      const opacity = status ? Number(getComputedStyle(status).opacity) : 0;
+
+      return (
+        button?.classList.contains("is-copied") &&
+        status?.classList.contains("is-visible") &&
+        status?.textContent?.trim() === "Скопировано" &&
+        icon?.textContent?.trim() === "✓" &&
+        opacity > 0.5
+      );
+    },
     { timeout: 5_000 },
   );
 
@@ -117,7 +130,7 @@ try {
     !copyState.copiedClass ||
     !copyState.statusVisibleClass ||
     copyState.text !== "Скопировано" ||
-    copyState.opacity <= 0 ||
+    copyState.opacity <= 0.5 ||
     copyState.animationName === "none" ||
     copyState.copyIcon !== "✓"
   ) {
