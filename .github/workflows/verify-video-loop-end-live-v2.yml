@@ -1,0 +1,60 @@
+name: Verify video loop end live v2
+
+on:
+  pull_request:
+    branches: [gh-pages]
+
+permissions:
+  contents: read
+
+jobs:
+  verify-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out verification scripts
+        uses: actions/checkout@v5
+
+      - name: Wait for published index.js v9
+        shell: bash
+        run: |
+          set -euo pipefail
+          ready=false
+          for attempt in $(seq 1 40); do
+            curl --fail --silent --show-error --location \
+              --header 'Cache-Control: no-cache' \
+              --header 'Pragma: no-cache' \
+              "https://terraz.ru/?loop_probe=${GITHUB_RUN_ID}-${attempt}" \
+              --output live-index.html
+            if grep -Fq 'assets/js/index.js?v=20260725-9' live-index.html; then
+              ready=true
+              break
+            fi
+            sleep 2
+          done
+          test "$ready" = "true"
+
+      - name: Prepare Chrome
+        shell: bash
+        run: |
+          chrome_path="$(command -v google-chrome || command -v chromium || command -v chromium-browser || true)"
+          test -n "$chrome_path"
+          echo "CHROME_PATH=${chrome_path}" >> "$GITHUB_ENV"
+          npm install --no-save --package-lock=false puppeteer-core@24.15.0
+
+      - name: Verify published video loop in Chrome
+        env:
+          LIVE_URL: https://terraz.ru/
+        run: node .github/scripts/verify_live_homepage.mjs
+
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: video-loop-end-live-v2-diagnostics
+          path: |
+            live-homepage.png
+            live-homepage-reduced-motion.png
+            live-homepage-mobile.png
+            live-homepage-report.json
+          if-no-files-found: warn
+          retention-days: 2
