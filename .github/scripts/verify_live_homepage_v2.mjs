@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260725-6";
+const expectedAssetsVersion = "20260725-7";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -40,19 +40,18 @@ async function readLogoState(page) {
     const finalStyle = finalPath ? getComputedStyle(finalPath) : null;
     const hostStyle = host ? getComputedStyle(host) : null;
     const svgStyle = svg ? getComputedStyle(svg) : null;
-    const revealPaths = Array.from(svg?.querySelectorAll(".logo-reveal-stroke") ?? []).map((path, index) => {
+    const revealPaths = Array.from(svg?.querySelectorAll(".logo-reveal-stroke") ?? []).map((path) => {
       const style = getComputedStyle(path);
-      const animation = path.getAnimations().find((item) => item.id === `terraz-logo-reveal-${index}`);
+      const animation = path.getAnimations().find((item) => item.id === "terraz-logo-reveal");
       const timing = animation?.effect?.getTiming() ?? {};
       const length = Number.parseFloat(path.dataset.logoLength ?? "NaN");
       return {
-        index,
-        order: Number(path.dataset.logoOrder ?? -1),
         length,
         dashOffset: Number.parseFloat(style.strokeDashoffset ?? "NaN"),
         dashArray: Number.parseFloat(style.strokeDasharray ?? "NaN"),
         stroke: style.stroke,
         strokeWidth: Number.parseFloat(style.strokeWidth ?? "NaN"),
+        transform: path.getAttribute("transform") ?? "",
         animation: animation ? {
           id: animation.id,
           playbackRate: animation.playbackRate,
@@ -76,6 +75,7 @@ async function readLogoState(page) {
       finalPathAnimationCount: finalPath?.getAnimations().length ?? -1,
       finalGroupMask: finalGroup?.getAttribute("mask") ?? "",
       finalPathMask: finalPath?.getAttribute("mask") ?? "",
+      finalTransform: finalPath?.getAttribute("transform") ?? "",
       finalFill: finalStyle?.fill ?? "",
       finalStroke: finalStyle?.stroke ?? "",
       finalStrokeWidth: Number.parseFloat(finalStyle?.strokeWidth ?? "NaN"),
@@ -91,21 +91,24 @@ async function readLogoState(page) {
   });
 }
 
-async function countVisibleLogoPixels(page) {
-  return page.evaluate(async () => {
+async function countVisibleLogoPixels(page, unmasked) {
+  return page.evaluate(async (removeMask) => {
     const svg = document.querySelector("#hero-logo svg.hero__logo-svg");
     if (!svg) return { count: 0, width: 0, height: 0 };
 
     const clone = svg.cloneNode(true);
     clone.setAttribute("width", "510");
     clone.setAttribute("height", "300");
-    const sourcePaths = Array.from(svg.querySelectorAll(".logo-reveal-stroke"));
-    const clonePaths = Array.from(clone.querySelectorAll(".logo-reveal-stroke"));
-    sourcePaths.forEach((path, index) => {
-      const style = getComputedStyle(path);
-      clonePaths[index].style.strokeDasharray = style.strokeDasharray;
-      clonePaths[index].style.strokeDashoffset = style.strokeDashoffset;
-    });
+    const sourcePath = svg.querySelector(".logo-reveal-stroke");
+    const clonePath = clone.querySelector(".logo-reveal-stroke");
+    if (sourcePath && clonePath) {
+      const style = getComputedStyle(sourcePath);
+      clonePath.style.strokeDasharray = style.strokeDasharray;
+      clonePath.style.strokeDashoffset = style.strokeDashoffset;
+    }
+    if (removeMask) {
+      clone.querySelector(".logo-final-shape")?.removeAttribute("mask");
+    }
 
     const markup = new XMLSerializer().serializeToString(clone);
     const url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
@@ -144,27 +147,7 @@ async function countVisibleLogoPixels(page) {
     } finally {
       URL.revokeObjectURL(url);
     }
-  });
-}
-
-function assertSequentialTiming(paths) {
-  for (let index = 0; index < paths.length; index += 1) {
-    const path = paths[index];
-    if (
-      path.index !== index || path.order !== index || !path.animation ||
-      path.animation.id !== `terraz-logo-reveal-${index}` ||
-      path.animation.direction !== "normal" || path.animation.iterations !== 1 ||
-      path.animation.playbackRate <= 0 || path.animation.duration <= 0
-    ) {
-      throw new Error(`Reveal stroke ${index} is not a single forward animation: ${JSON.stringify(path)}`);
-    }
-    if (index > 0) {
-      const previous = paths[index - 1].animation;
-      if (path.animation.delay < previous.delay + previous.duration - 1) {
-        throw new Error(`Reveal strokes overlap: ${JSON.stringify(paths.map((item) => item.animation))}`);
-      }
-    }
-  }
+  }, unmasked);
 }
 
 async function verifyLogoDrawing(page) {
@@ -174,52 +157,54 @@ async function verifyLogoDrawing(page) {
   const middle = await readLogoState(page);
   await delay(3_100);
   const end = await readLogoState(page);
-  const renderedPixels = await countVisibleLogoPixels(page);
+  const renderedPixels = await countVisibleLogoPixels(page, false);
+  const fullPixels = await countVisibleLogoPixels(page, true);
+  const coverage = fullPixels.count > 0 ? renderedPixels.count / fullPixels.count : 0;
 
   if (
     !start.hostExists || start.objectExists || !start.svgExists || !start.finalGroupExists ||
     !start.finalPathExists || !start.maskExists || start.logoMode !== "masked-original" ||
     start.viewBox !== "0 0 255 150" || start.finalPathAnimationCount !== 0 ||
     !start.finalGroupMask.includes("terraz-logo-reveal-mask") || start.finalPathMask !== "" ||
-    start.strokeCount !== 7 || start.revealPaths.length !== 7 ||
-    !Number.isFinite(start.pathLength) || start.pathLength < 300 ||
+    start.strokeCount !== 1 || start.revealPaths.length !== 1 ||
+    !Number.isFinite(start.pathLength) || start.pathLength < 2000 ||
+    start.finalTransform !== start.revealPaths[0]?.transform ||
     start.finalFill !== "none" || start.finalStroke !== "rgb(255, 255, 255)" ||
     !Number.isFinite(start.finalStrokeWidth) || start.finalStrokeWidth < 0.9 || start.finalStrokeWidth > 1.3 ||
     start.finalFilter !== "none" || !isTransparentColor(start.hostBackground) ||
     !isTransparentColor(start.svgBackground) || start.hostFilter !== "none"
   ) {
-    throw new Error(`Masked original logo structure is invalid: ${JSON.stringify(start)}`);
+    throw new Error(`Exact masked logo structure is invalid: ${JSON.stringify(start)}`);
   }
 
-  assertSequentialTiming(start.revealPaths);
-  for (const path of start.revealPaths) {
-    if (
-      !Number.isFinite(path.length) || path.length <= 10 || !Number.isFinite(path.dashArray) ||
-      !Number.isFinite(path.dashOffset) || path.dashOffset < path.length * 0.65 ||
-      path.stroke !== "rgb(255, 255, 255)" || !Number.isFinite(path.strokeWidth) ||
-      path.strokeWidth < 17 || path.strokeWidth > 19
-    ) {
-      throw new Error(`Reveal stroke does not start hidden: ${JSON.stringify(path)}`);
-    }
+  const reveal = start.revealPaths[0];
+  if (
+    !reveal.animation || reveal.animation.id !== "terraz-logo-reveal" ||
+    reveal.animation.direction !== "normal" || reveal.animation.iterations !== 1 ||
+    reveal.animation.playbackRate <= 0 || reveal.animation.duration < 4000 ||
+    !Number.isFinite(reveal.length) || !Number.isFinite(reveal.dashArray) ||
+    !Number.isFinite(reveal.dashOffset) || reveal.dashOffset < reveal.length * 0.8 ||
+    reveal.stroke !== "rgb(255, 255, 255)" || !Number.isFinite(reveal.strokeWidth) ||
+    reveal.strokeWidth < 7.5 || reveal.strokeWidth > 8.5
+  ) {
+    throw new Error(`Exact reveal brush is invalid: ${JSON.stringify(reveal)}`);
   }
 
-  const moving = middle.revealPaths.filter((path) => path.dashOffset > 2 && path.dashOffset < path.length * 0.98);
-  if (moving.length > 1) {
-    throw new Error(`More than one reveal stroke moves at once: ${JSON.stringify(middle.revealPaths)}`);
+  const middleOffset = middle.revealPaths[0]?.dashOffset;
+  if (!Number.isFinite(middleOffset) || middleOffset >= reveal.dashOffset || middleOffset <= 2) {
+    throw new Error(`Reveal brush is not moving forward: ${JSON.stringify({ start: reveal, middle: middle.revealPaths[0] })}`);
   }
-  const states = middle.revealPaths.map((path) => path.dashOffset <= 2 ? "done" : path.dashOffset >= path.length * 0.98 ? "waiting" : "drawing");
-  const rank = { done: 0, drawing: 1, waiting: 2 };
-  if (states.some((state, index) => index > 0 && rank[state] < rank[states[index - 1]])) {
-    throw new Error(`Reveal order moved backwards: ${JSON.stringify(states)}`);
+  if (end.revealPaths[0]?.dashOffset > 2) {
+    throw new Error(`Reveal brush did not finish: ${JSON.stringify(end.revealPaths[0])}`);
   }
-  if (end.revealPaths.some((path) => path.dashOffset > 2)) {
-    throw new Error(`Reveal did not finish in one pass: ${JSON.stringify(end.revealPaths)}`);
-  }
-  if (renderedPixels.count < 150 || renderedPixels.width < 120 || renderedPixels.height < 45) {
-    throw new Error(`Completed logo is not visibly rendered: ${JSON.stringify(renderedPixels)}`);
+  if (
+    fullPixels.count < 200 || renderedPixels.count < 200 || coverage < 0.95 ||
+    renderedPixels.width < fullPixels.width * 0.95 || renderedPixels.height < fullPixels.height * 0.95
+  ) {
+    throw new Error(`Completed mask does not reveal the full original logo: ${JSON.stringify({ renderedPixels, fullPixels, coverage })}`);
   }
 
-  return { start, middle, end, states, renderedPixels };
+  return { start, middle, end, renderedPixels, fullPixels, coverage };
 }
 
 async function verifyMode({ mode, reducedMotion = false, mobile = false, expectedScale, screenshotPath }) {
