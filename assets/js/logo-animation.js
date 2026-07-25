@@ -19,22 +19,22 @@
     return document.createElementNS("http://www.w3.org/2000/svg", name);
   }
 
-  function prepareFinalLogo(path) {
-    path.getAnimations().forEach(function (animation) {
+  function prepareFinalLogo(finalPath) {
+    finalPath.getAnimations().forEach(function (animation) {
       animation.cancel();
     });
-    path.style.transitionProperty = "none";
-    path.style.transitionDuration = "0s";
-    path.style.animation = "none";
-    path.style.fill = "none";
-    path.style.fillOpacity = "0";
-    path.style.stroke = "#ffffff";
-    path.style.strokeWidth = "1.15";
-    path.style.strokeLinecap = "round";
-    path.style.strokeLinejoin = "round";
-    path.style.vectorEffect = "non-scaling-stroke";
-    path.style.filter = "none";
-    path.style.opacity = "1";
+    finalPath.style.transitionProperty = "none";
+    finalPath.style.transitionDuration = "0s";
+    finalPath.style.animation = "none";
+    finalPath.style.fill = "none";
+    finalPath.style.fillOpacity = "0";
+    finalPath.style.stroke = "#ffffff";
+    finalPath.style.strokeWidth = "1.15";
+    finalPath.style.strokeLinecap = "round";
+    finalPath.style.strokeLinejoin = "round";
+    finalPath.style.vectorEffect = "non-scaling-stroke";
+    finalPath.style.filter = "none";
+    finalPath.style.opacity = "1";
   }
 
   function buildRevealMask(svg, finalPath) {
