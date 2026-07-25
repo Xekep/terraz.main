@@ -78,12 +78,12 @@ def main() -> None:
     require(".png" not in css, "Social icons must not use square PNG assets")
     require("brightness(0) invert(1)" not in css, "The old white-tile icon filter must not return")
 
-    require('terraz-assets" content="20260725-7' in html, "Homepage assets version was not bumped")
+    require('terraz-assets" content="20260725-8' in html, "Homepage assets version was not bumped")
     require(parser.logo_host.get("role") == "img", "Logo host must expose image semantics")
-    require("terraz-logo.svg?v=20260725-7" in (parser.logo_host.get("data-logo-src") or ""), "Inline logo source is stale")
+    require("terraz-logo.svg?v=20260725-8" in (parser.logo_host.get("data-logo-src") or ""), "Inline logo source is stale")
     require("<object" not in html, "Opaque object-based logo canvas must not return")
-    require("logo-drawing.css?v=20260725-7" in html, "Logo drawing stylesheet is not linked")
-    require("logo-animation.js?v=20260725-7" in html, "Logo drawing script is not linked")
+    require("logo-drawing.css?v=20260725-8" in html, "Logo drawing stylesheet is not linked")
+    require("logo-animation.js?v=20260725-8" in html, "Logo drawing script is not linked")
 
     require('class="title-letter"' in logo_svg, "Original TerraZ logo path must be restored")
     require('viewBox="0 0 255 150"' in logo_svg, "Original TerraZ logo proportions changed")
@@ -125,6 +125,7 @@ def main() -> None:
     require("dataset.state" in js and "dataset.muted" in js, "Video control state switching is missing")
 
     require(parser.video_attributes.get("data-loop-start") == "12", "Background video must start at 12 seconds")
+    require(parser.video_attributes.get("data-loop-end") == "210", "Background video must loop at 03:30")
     require("autoplay" in parser.video_attributes and "muted" in parser.video_attributes, "Background video autoplay setup is incomplete")
     require("playsinline" in parser.video_attributes, "Background video must play inline on mobile")
     require(len(parser.video_sources) == 1, "Background video must have exactly one source")
@@ -135,9 +136,12 @@ def main() -> None:
     require("scale(1);" in video_css, "Mobile background video must use scale 1")
     require("scale(1.02)" not in video_css, "Old background video zoom must not return")
     require("DEFAULT_LOOP_START = 12" in js, "Static video loop start is missing")
+    require("DEFAULT_LOOP_END = 210" in js, "Static video loop end is missing")
+    require('addEventListener("timeupdate", handleVideoTimeUpdate)' in js, "Video loop-end listener is missing")
+    require("currentTime >= getLoopEnd() - 0.05" in js, "Video must restart at the configured loop end")
     require("YT.Player" not in js and "iframe_api" not in js, "YouTube player code must not return")
 
-    require("motion-preferences.css?v=20260725-7" in html, "Motion compatibility stylesheet is not current")
+    require("motion-preferences.css?v=20260725-8" in html, "Motion compatibility stylesheet is not current")
     require("section-in .72s" in motion_css, "Section animations must remain enabled with reduced motion")
     require("copy-fade 1.65s" in motion_css, "Copy animation must remain enabled with reduced motion")
     require("animation: none !important" not in motion_css, "Motion compatibility must not disable requested animations")
