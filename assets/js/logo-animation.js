@@ -23,6 +23,7 @@
     finalPath.getAnimations().forEach(function (animation) {
       animation.cancel();
     });
+    finalPath.removeAttribute("mask");
     finalPath.style.transitionProperty = "none";
     finalPath.style.transitionDuration = "0s";
     finalPath.style.animation = "none";
@@ -37,7 +38,15 @@
     finalPath.style.opacity = "1";
   }
 
-  function buildRevealMask(svg, finalPath) {
+  function wrapFinalLogo(finalPath) {
+    var finalGroup = createSvgNode("g");
+    finalGroup.classList.add("logo-final-shape");
+    finalPath.parentNode.insertBefore(finalGroup, finalPath);
+    finalGroup.appendChild(finalPath);
+    return finalGroup;
+  }
+
+  function buildRevealMask(svg, finalGroup) {
     var defs = svg.querySelector("defs") || createSvgNode("defs");
     if (!defs.parentNode) {
       svg.insertBefore(defs, svg.firstChild);
@@ -57,6 +66,7 @@
     mask.setAttribute("y", String(viewBox.y));
     mask.setAttribute("width", String(viewBox.width));
     mask.setAttribute("height", String(viewBox.height));
+    mask.style.maskType = "luminance";
 
     var background = createSvgNode("rect");
     background.setAttribute("x", String(viewBox.x));
@@ -84,7 +94,7 @@
 
     mask.appendChild(revealGroup);
     defs.appendChild(mask);
-    finalPath.setAttribute("mask", "url(#" + MASK_ID + ")");
+    finalGroup.setAttribute("mask", "url(#" + MASK_ID + ")");
     return revealPaths;
   }
 
@@ -121,6 +131,9 @@
       });
 
       drawing.id = "terraz-logo-reveal-" + index;
+      drawing.finished.then(function () {
+        path.style.strokeDashoffset = "0";
+      }).catch(function () {});
       nextDelay += duration + STROKE_GAP;
     });
 
@@ -173,7 +186,8 @@
       }
 
       prepareFinalLogo(finalPath);
-      var revealPaths = buildRevealMask(svg, finalPath);
+      var finalGroup = wrapFinalLogo(finalPath);
+      var revealPaths = buildRevealMask(svg, finalGroup);
       logoHost.replaceChildren(svg);
       animateRevealStrokes(logoHost, revealPaths);
     } catch (error) {

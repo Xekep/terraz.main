@@ -4,7 +4,7 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260725-5";
+const expectedAssetsVersion = "20260725-6";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -35,7 +35,8 @@ async function readLogoState(page) {
   return page.evaluate(() => {
     const host = document.querySelector("#hero-logo");
     const svg = host?.querySelector("svg.hero__logo-svg");
-    const finalPath = svg?.querySelector(".title-letter");
+    const finalGroup = svg?.querySelector(".logo-final-shape");
+    const finalPath = finalGroup?.querySelector(".title-letter");
     const finalStyle = finalPath ? getComputedStyle(finalPath) : null;
     const hostStyle = host ? getComputedStyle(host) : null;
     const svgStyle = svg ? getComputedStyle(svg) : null;
@@ -70,9 +71,11 @@ async function readLogoState(page) {
       logoMode: host?.dataset.logoMode ?? "",
       svgExists: Boolean(svg),
       viewBox: svg?.getAttribute("viewBox") ?? "",
+      finalGroupExists: Boolean(finalGroup),
       finalPathExists: Boolean(finalPath),
       finalPathAnimationCount: finalPath?.getAnimations().length ?? -1,
-      finalMask: finalPath?.getAttribute("mask") ?? "",
+      finalGroupMask: finalGroup?.getAttribute("mask") ?? "",
+      finalPathMask: finalPath?.getAttribute("mask") ?? "",
       finalFill: finalStyle?.fill ?? "",
       finalStroke: finalStyle?.stroke ?? "",
       finalStrokeWidth: Number.parseFloat(finalStyle?.strokeWidth ?? "NaN"),
@@ -85,6 +88,62 @@ async function readLogoState(page) {
       maskExists: Boolean(svg?.querySelector("#terraz-logo-reveal-mask")),
       revealPaths,
     };
+  });
+}
+
+async function countVisibleLogoPixels(page) {
+  return page.evaluate(async () => {
+    const svg = document.querySelector("#hero-logo svg.hero__logo-svg");
+    if (!svg) return { count: 0, width: 0, height: 0 };
+
+    const clone = svg.cloneNode(true);
+    clone.setAttribute("width", "510");
+    clone.setAttribute("height", "300");
+    const sourcePaths = Array.from(svg.querySelectorAll(".logo-reveal-stroke"));
+    const clonePaths = Array.from(clone.querySelectorAll(".logo-reveal-stroke"));
+    sourcePaths.forEach((path, index) => {
+      const style = getComputedStyle(path);
+      clonePaths[index].style.strokeDasharray = style.strokeDasharray;
+      clonePaths[index].style.strokeDashoffset = style.strokeDashoffset;
+    });
+
+    const markup = new XMLSerializer().serializeToString(clone);
+    const url = URL.createObjectURL(new Blob([markup], { type: "image/svg+xml" }));
+    try {
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = 510;
+      canvas.height = 300;
+      const context = canvas.getContext("2d", { willReadFrequently: true });
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      context.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+      let count = 0;
+      let minX = canvas.width;
+      let minY = canvas.height;
+      let maxX = -1;
+      let maxY = -1;
+      for (let offset = 0; offset < pixels.length; offset += 4) {
+        if (pixels[offset + 3] < 32 || Math.max(pixels[offset], pixels[offset + 1], pixels[offset + 2]) < 140) continue;
+        const pixel = offset / 4;
+        const x = pixel % canvas.width;
+        const y = Math.floor(pixel / canvas.width);
+        count += 1;
+        minX = Math.min(minX, x);
+        minY = Math.min(minY, y);
+        maxX = Math.max(maxX, x);
+        maxY = Math.max(maxY, y);
+      }
+      return {
+        count,
+        width: maxX >= minX ? maxX - minX + 1 : 0,
+        height: maxY >= minY ? maxY - minY + 1 : 0,
+      };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
   });
 }
 
@@ -115,11 +174,14 @@ async function verifyLogoDrawing(page) {
   const middle = await readLogoState(page);
   await delay(3_100);
   const end = await readLogoState(page);
+  const renderedPixels = await countVisibleLogoPixels(page);
 
   if (
-    !start.hostExists || start.objectExists || !start.svgExists || !start.finalPathExists || !start.maskExists ||
-    start.logoMode !== "masked-original" || start.viewBox !== "0 0 255 150" || start.finalPathAnimationCount !== 0 ||
-    !start.finalMask.includes("terraz-logo-reveal-mask") || start.strokeCount !== 7 || start.revealPaths.length !== 7 ||
+    !start.hostExists || start.objectExists || !start.svgExists || !start.finalGroupExists ||
+    !start.finalPathExists || !start.maskExists || start.logoMode !== "masked-original" ||
+    start.viewBox !== "0 0 255 150" || start.finalPathAnimationCount !== 0 ||
+    !start.finalGroupMask.includes("terraz-logo-reveal-mask") || start.finalPathMask !== "" ||
+    start.strokeCount !== 7 || start.revealPaths.length !== 7 ||
     !Number.isFinite(start.pathLength) || start.pathLength < 300 ||
     start.finalFill !== "none" || start.finalStroke !== "rgb(255, 255, 255)" ||
     !Number.isFinite(start.finalStrokeWidth) || start.finalStrokeWidth < 0.9 || start.finalStrokeWidth > 1.3 ||
@@ -153,8 +215,11 @@ async function verifyLogoDrawing(page) {
   if (end.revealPaths.some((path) => path.dashOffset > 2)) {
     throw new Error(`Reveal did not finish in one pass: ${JSON.stringify(end.revealPaths)}`);
   }
+  if (renderedPixels.count < 150 || renderedPixels.width < 120 || renderedPixels.height < 45) {
+    throw new Error(`Completed logo is not visibly rendered: ${JSON.stringify(renderedPixels)}`);
+  }
 
-  return { start, middle, end, states };
+  return { start, middle, end, states, renderedPixels };
 }
 
 async function verifyMode({ mode, reducedMotion = false, mobile = false, expectedScale, screenshotPath }) {
