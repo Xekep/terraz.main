@@ -4,8 +4,10 @@ import puppeteer from "puppeteer-core";
 const liveUrl = process.env.LIVE_URL || "https://terraz.ru/";
 const chromePath = process.env.CHROME_PATH || "/usr/bin/google-chrome";
 const runId = process.env.GITHUB_RUN_ID || Date.now().toString();
-const expectedAssetsVersion = "20260725-7";
+const expectedAssetsVersion = "20260725-8";
 const expectedVideoUrl = "https://d.terraz.ru/static/Eye_of_Cthulhu_By_Cupquake_Terraria_Speed_Art.mp4";
+const expectedLoopStart = 12;
+const expectedLoopEnd = 210;
 const report = { modes: {}, error: null };
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -207,6 +209,43 @@ async function verifyLogoDrawing(page) {
   return { start, middle, end, renderedPixels, fullPixels, coverage };
 }
 
+async function verifyVideoLoop(page) {
+  const before = await page.evaluate(() => {
+    const video = document.querySelector("#hero-video-element");
+    return {
+      loopStart: Number(video?.dataset.loopStart ?? NaN),
+      loopEnd: Number(video?.dataset.loopEnd ?? NaN),
+      duration: Number(video?.duration ?? NaN),
+    };
+  });
+
+  if (before.loopStart !== expectedLoopStart || before.loopEnd !== expectedLoopEnd || before.duration <= expectedLoopEnd) {
+    throw new Error(`Video loop configuration is invalid: ${JSON.stringify(before)}`);
+  }
+
+  const after = await page.evaluate(async (loopEnd) => {
+    const video = document.querySelector("#hero-video-element");
+    video.currentTime = loopEnd - 0.02;
+    video.dispatchEvent(new Event("timeupdate"));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    return {
+      currentTime: video.currentTime,
+      paused: video.paused,
+      loopStart: Number(video.dataset.loopStart),
+      loopEnd: Number(video.dataset.loopEnd),
+    };
+  }, expectedLoopEnd);
+
+  if (
+    after.loopStart !== expectedLoopStart || after.loopEnd !== expectedLoopEnd ||
+    after.currentTime < expectedLoopStart - 0.25 || after.currentTime > expectedLoopStart + 1.5 || after.paused
+  ) {
+    throw new Error(`Video did not restart at 03:30: ${JSON.stringify({ before, after })}`);
+  }
+
+  return { before, after };
+}
+
 async function verifyMode({ mode, reducedMotion = false, mobile = false, expectedScale, screenshotPath }) {
   const page = await browser.newPage();
   await page.setViewport(mobile
@@ -234,6 +273,7 @@ async function verifyMode({ mode, reducedMotion = false, mobile = false, expecte
     return video?.currentSrc === source && video.readyState >= 2 && video.currentTime >= 11.5 && !video.paused;
   }, { timeout: 30_000 }, expectedVideoUrl);
 
+  const videoLoop = await verifyVideoLoop(page);
   const videoAndControls = await page.evaluate(() => {
     const video = document.querySelector("#hero-video-element");
     const style = video ? getComputedStyle(video) : null;
@@ -261,7 +301,7 @@ async function verifyMode({ mode, reducedMotion = false, mobile = false, expecte
 
   await page.screenshot({ path: screenshotPath, fullPage: true });
   await page.close();
-  return { reducedMotion, mobile, expectedScale, logo, videoAndControls, consoleErrors };
+  return { reducedMotion, mobile, expectedScale, logo, videoLoop, videoAndControls, consoleErrors };
 }
 
 try {
