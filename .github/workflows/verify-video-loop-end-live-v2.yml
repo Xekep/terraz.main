@@ -1,4 +1,4 @@
-name: Verify video loop end live v2
+name: Verify video loop end live v3
 
 on:
   pull_request:
@@ -14,7 +14,7 @@ jobs:
       - name: Check out verification scripts
         uses: actions/checkout@v5
 
-      - name: Wait for published index.js v9
+      - name: Wait for published index.js v10
         shell: bash
         run: |
           set -euo pipefail
@@ -25,7 +25,7 @@ jobs:
               --header 'Pragma: no-cache' \
               "https://terraz.ru/?loop_probe=${GITHUB_RUN_ID}-${attempt}" \
               --output live-index.html
-            if grep -Fq 'assets/js/index.js?v=20260725-9' live-index.html; then
+            if grep -Fq 'assets/js/index.js?v=20260725-10' live-index.html; then
               ready=true
               break
             fi
@@ -50,7 +50,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: video-loop-end-live-v2-diagnostics
+          name: video-loop-end-live-v3-diagnostics
           path: |
             live-homepage.png
             live-homepage-reduced-motion.png
