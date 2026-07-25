@@ -142,7 +142,7 @@
   }
 
   function handleVideoTimeUpdate() {
-    if (!videoElement || videoElement.seeking) {
+    if (!videoElement) {
       return;
     }
 
