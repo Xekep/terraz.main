@@ -2,6 +2,7 @@
   "use strict";
 
   var DEFAULT_LOOP_START = 12;
+  var DEFAULT_LOOP_END = 210;
   var copyResetTimer = null;
   var videoElement = null;
   var videoReady = false;
@@ -24,6 +25,23 @@
     return Math.max(requestedStart, 0);
   }
 
+  function getLoopEnd() {
+    if (!videoElement) {
+      return DEFAULT_LOOP_END;
+    }
+
+    var loopStart = getLoopStart();
+    var configuredEnd = Number(videoElement.dataset.loopEnd);
+    var requestedEnd = Number.isFinite(configuredEnd) ? configuredEnd : DEFAULT_LOOP_END;
+
+    if (Number.isFinite(videoElement.duration) && videoElement.duration > 0) {
+      var maximumEnd = Math.max(videoElement.duration - 0.05, loopStart + 0.1);
+      return Math.min(Math.max(requestedEnd, loopStart + 0.1), maximumEnd);
+    }
+
+    return Math.max(requestedEnd, loopStart + 0.1);
+  }
+
   function seekToLoopStart() {
     if (!videoElement || videoElement.readyState < 1) {
       return;
@@ -33,6 +51,14 @@
       videoElement.currentTime = getLoopStart();
     } catch (error) {
       console.error("Не удалось установить старт фонового видео", error);
+    }
+  }
+
+  function restartVideoLoop() {
+    seekToLoopStart();
+
+    if (!userPaused && !document.hidden && videoElement && videoElement.paused) {
+      playBackgroundVideo();
     }
   }
 
@@ -115,12 +141,18 @@
     setPauseButtonState(false);
   }
 
-  function handleVideoEnded() {
-    seekToLoopStart();
-
-    if (!userPaused && !document.hidden) {
-      playBackgroundVideo();
+  function handleVideoTimeUpdate() {
+    if (!videoElement || videoElement.seeking) {
+      return;
     }
+
+    if (videoElement.currentTime >= getLoopEnd() - 0.05) {
+      restartVideoLoop();
+    }
+  }
+
+  function handleVideoEnded() {
+    restartVideoLoop();
   }
 
   function setupStaticVideo() {
@@ -141,6 +173,7 @@
     videoElement.addEventListener("pause", function () {
       setPauseButtonState(true);
     });
+    videoElement.addEventListener("timeupdate", handleVideoTimeUpdate);
     videoElement.addEventListener("ended", handleVideoEnded);
     videoElement.addEventListener("error", function () {
       handleVideoError(videoElement.error);
