@@ -174,6 +174,7 @@
       setPauseButtonState(true);
     });
     videoElement.addEventListener("timeupdate", handleVideoTimeUpdate);
+    videoElement.addEventListener("seeked", handleVideoTimeUpdate);
     videoElement.addEventListener("ended", handleVideoEnded);
     videoElement.addEventListener("error", function () {
       handleVideoError(videoElement.error);
