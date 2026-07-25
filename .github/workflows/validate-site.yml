@@ -33,4 +33,16 @@ jobs:
         run: python3 .github/scripts/validate_site.py
 
       - name: Check homepage regressions
-        run: python3 .github/scripts/validate_homepage.py
+        shell: bash
+        run: |
+          set -o pipefail
+          python3 .github/scripts/validate_homepage.py 2>&1 | tee homepage-validation.log
+
+      - name: Upload validation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: homepage-validation
+          path: homepage-validation.log
+          if-no-files-found: warn
+          retention-days: 2
