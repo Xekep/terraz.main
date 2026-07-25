@@ -3,30 +3,92 @@
 
   var TOTAL_DRAWING_DURATION = 4200;
   var DRAWING_DELAY = 120;
-  var STROKE_GAP = 35;
+  var STROKE_GAP = 30;
+  var MASK_ID = "terraz-logo-reveal-mask";
+  var REVEAL_PATHS = [
+    "M27 43 C23 33 28 26 38 26 C54 26 67 39 82 40 C99 42 116 42 129 36",
+    "M58 21 C58 49 58 82 60 123 C67 109 74 101 83 98 C94 95 103 89 103 83 C103 78 98 75 92 76 C81 77 74 86 74 97 C74 106 81 111 90 110 C100 108 109 100 113 88",
+    "M104 110 C104 99 104 88 105 81 C108 85 111 88 116 88 C121 88 124 85 128 82",
+    "M130 110 C130 99 130 88 131 81 C134 85 137 88 142 88 C147 88 151 85 155 82",
+    "M179 82 C172 78 162 79 157 85 C150 93 152 105 161 110 C170 114 179 107 180 97 C181 89 177 83 170 81",
+    "M180 111 C181 98 181 86 182 79",
+    "M188 40 C198 46 208 42 216 32 C215 55 207 78 196 101 C190 112 184 124 181 133 C200 125 218 112 226 95 C230 88 230 83 227 82 C224 81 222 84 223 88 C224 91 227 91 229 88"
+  ];
 
-  function prepareStroke(path, length) {
-    path.getAnimations().forEach(function (animation) {
-      animation.cancel();
-    });
-
-    path.style.transitionProperty = "none";
-    path.style.transitionDuration = "0s";
-    path.style.animation = "none";
-    path.style.fill = "none";
-    path.style.fillOpacity = "0";
-    path.style.stroke = "#ffffff";
-    path.style.strokeWidth = "1.15";
-    path.style.strokeLinecap = "round";
-    path.style.strokeLinejoin = "round";
-    path.style.strokeDasharray = String(length);
-    path.style.strokeDashoffset = String(length);
-    path.style.vectorEffect = "non-scaling-stroke";
-    path.style.filter = "none";
-    path.style.opacity = "1";
+  function createSvgNode(name) {
+    return document.createElementNS("http://www.w3.org/2000/svg", name);
   }
 
-  function animateLogoStrokes(logoHost, strokes) {
+  function prepareFinalLogo(finalPath) {
+    finalPath.getAnimations().forEach(function (animation) {
+      animation.cancel();
+    });
+    finalPath.style.transitionProperty = "none";
+    finalPath.style.transitionDuration = "0s";
+    finalPath.style.animation = "none";
+    finalPath.style.fill = "none";
+    finalPath.style.fillOpacity = "0";
+    finalPath.style.stroke = "#ffffff";
+    finalPath.style.strokeWidth = "1.15";
+    finalPath.style.strokeLinecap = "round";
+    finalPath.style.strokeLinejoin = "round";
+    finalPath.style.vectorEffect = "non-scaling-stroke";
+    finalPath.style.filter = "none";
+    finalPath.style.opacity = "1";
+  }
+
+  function buildRevealMask(svg, finalPath) {
+    var defs = svg.querySelector("defs") || createSvgNode("defs");
+    if (!defs.parentNode) {
+      svg.insertBefore(defs, svg.firstChild);
+    }
+
+    var oldMask = defs.querySelector("#" + MASK_ID);
+    if (oldMask) {
+      oldMask.remove();
+    }
+
+    var viewBox = svg.viewBox.baseVal;
+    var mask = createSvgNode("mask");
+    mask.id = MASK_ID;
+    mask.setAttribute("maskUnits", "userSpaceOnUse");
+    mask.setAttribute("maskContentUnits", "userSpaceOnUse");
+    mask.setAttribute("x", String(viewBox.x));
+    mask.setAttribute("y", String(viewBox.y));
+    mask.setAttribute("width", String(viewBox.width));
+    mask.setAttribute("height", String(viewBox.height));
+
+    var background = createSvgNode("rect");
+    background.setAttribute("x", String(viewBox.x));
+    background.setAttribute("y", String(viewBox.y));
+    background.setAttribute("width", String(viewBox.width));
+    background.setAttribute("height", String(viewBox.height));
+    background.setAttribute("fill", "black");
+    mask.appendChild(background);
+
+    var revealGroup = createSvgNode("g");
+    revealGroup.setAttribute("fill", "none");
+    revealGroup.setAttribute("stroke", "white");
+    revealGroup.setAttribute("stroke-width", "18");
+    revealGroup.setAttribute("stroke-linecap", "round");
+    revealGroup.setAttribute("stroke-linejoin", "round");
+
+    var revealPaths = REVEAL_PATHS.map(function (data, index) {
+      var path = createSvgNode("path");
+      path.classList.add("logo-reveal-stroke");
+      path.dataset.order = String(index);
+      path.setAttribute("d", data);
+      revealGroup.appendChild(path);
+      return path;
+    });
+
+    mask.appendChild(revealGroup);
+    defs.appendChild(mask);
+    finalPath.setAttribute("mask", "url(#" + MASK_ID + ")");
+    return revealPaths;
+  }
+
+  function animateRevealStrokes(logoHost, strokes) {
     var lengths = strokes.map(function (path) {
       return typeof path.getTotalLength === "function" ? path.getTotalLength() : 100;
     });
@@ -39,30 +101,26 @@
     strokes.forEach(function (path, index) {
       var length = lengths[index];
       var duration = Math.max(180, availableDuration * length / totalLength);
-
-      prepareStroke(path, length);
+      path.style.transitionProperty = "none";
+      path.style.transitionDuration = "0s";
+      path.style.strokeDasharray = String(length);
+      path.style.strokeDashoffset = String(length);
       path.dataset.logoOrder = String(index);
       path.dataset.logoLength = String(length);
 
       var drawing = path.animate([
-        {
-          strokeDashoffset: length,
-          opacity: index === 0 ? 0.28 : 1,
-        },
-        {
-          strokeDashoffset: 0,
-          opacity: 1,
-        },
+        { strokeDashoffset: length },
+        { strokeDashoffset: 0 }
       ], {
         duration: duration,
         delay: nextDelay,
         easing: "cubic-bezier(.42, .02, .2, 1)",
         fill: "forwards",
         direction: "normal",
-        iterations: 1,
+        iterations: 1
       });
 
-      drawing.id = "terraz-logo-write-" + index;
+      drawing.id = "terraz-logo-reveal-" + index;
       nextDelay += duration + STROKE_GAP;
     });
 
@@ -70,6 +128,7 @@
     logoHost.dataset.pathLength = String(totalLength);
     logoHost.dataset.strokeCount = String(strokes.length);
     logoHost.dataset.drawingDuration = String(nextDelay - DRAWING_DELAY - STROKE_GAP);
+    logoHost.dataset.logoMode = "masked-original";
   }
 
   async function setupLogoDrawing() {
@@ -108,16 +167,15 @@
       svg.style.background = "transparent";
       svg.style.overflow = "visible";
 
-      var strokes = Array.from(svg.querySelectorAll(".logo-stroke"));
-      strokes.sort(function (left, right) {
-        return Number(left.dataset.order) - Number(right.dataset.order);
-      });
-      if (strokes.length < 2) {
-        throw new Error("Logo SVG single-pass strokes are missing");
+      var finalPath = svg.querySelector(".title-letter");
+      if (!finalPath) {
+        throw new Error("Original TerraZ logo path is missing");
       }
 
+      prepareFinalLogo(finalPath);
+      var revealPaths = buildRevealMask(svg, finalPath);
       logoHost.replaceChildren(svg);
-      animateLogoStrokes(logoHost, strokes);
+      animateRevealStrokes(logoHost, revealPaths);
     } catch (error) {
       console.error("Unable to initialize TerraZ logo drawing", error);
       logoHost.dataset.drawingReady = "fallback";
